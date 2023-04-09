@@ -1,0 +1,61 @@
+{% extends "layout.html" %} {% block content %}
+<div class="content-section">
+  <div class="center">
+    <form method="POST" action="">
+      {{ form.hidden_tag() }}
+      <fieldset class="form-group">
+        <legend class="border-bottom mb-4">Create Sentry Circuit</legend>
+        <div class="row">
+          <div class="col-6 form-group my-4">
+            {{ form.shift_date.label(class="form-control-label") }} {% if
+            form.shift_date.errors %} {{ form.shift_date(class="form-control
+            form-control-lg is-invalid") }}
+            <div class="invalid-feedback">
+              {% for error in form.shift_date.errors %}
+              <span>{{ error }}</span>
+              {% endfor %}
+            </div>
+            {% else %} {{ form.shift_date(class="form-control
+            form-control-lg")}} {% endif %}
+          </div>
+          <div class="col-6 form-group my-4">
+            {{ form.start.label(class="form-control-label") }} {% if
+            form.start.errors %} {{ form.start(class="form-control
+            form-control-lg is-invalid") }}
+            <div class="invalid-feedback">
+              {% for error in form.start.errors %}
+              <span>{{ error }}</span>
+              {% endfor %}
+            </div>
+            {% else %} {{ form.start(class="form-control form-control-lg")}} {%
+            endif %}
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-6 form-group my-3">
+            {{ form.shift_dur_hour.label(class="form-control-label") }} {{
+            form.shift_dur_hour(class="form-control form-control-lg") }}
+          </div>
+          <div class="col-md-6 form-group my-3">
+            {{ form.shift_dur_min.label(class="form-control-label") }} {{
+            form.shift_dur_min(class="form-control form-control-lg") }}
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-6 form-group my-3">
+            {{ form.shift_sentries.label(class="form-control-label") }} {{
+            form.shift_sentries(class="form-control form-control-lg") }}
+          </div>
+          <div class="col-md-6 form-group my-3">
+            {{ form.shift_cards.label(class="form-control-label") }} {{
+            form.shift_cards(class="form-control form-control-lg") }}
+          </div>
+        </div>
+      </fieldset>
+      <div class="form-group mt-2 mb-4">
+        {{ form.submit(class="btn btn-outline-info") }}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "layout.html" %} {% block content %}
+<div class="content-section">
+  <div class="center">
+    <form method="POST" action="">
+      {{ form.hidden_tag() }}
+      <fieldset class="form-group">
+        <legend class="border-bottom mb-4">Register RFID Card</legend>
+        <div class="form-group my-4">
+          {{ form.card_id.label(class="form-control-label") }} {% if
+          form.card_id.errors %} {{ form.card_id(class="form-control
+          form-control-lg is-invalid") }}
+          <div class="invalid-feedback">
+            {% for error in form.card_id.errors %}
+            <span>{{ error }}</span>
+            {% endfor %}
+          </div>
+          {% else %} {{ form.card_id(class="form-control form-control-lg")}} {%
+          endif %}
+        </div>
+      </fieldset>
+      <div class="form-group mt-2 mb-4">
+        {{ form.submit(class="btn btn-outline-info") }}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -28,6 +28,7 @@ class Card(db.Model):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     rfid_id = Column(String(11), unique=True, nullable=False)
+    alias = Column(String(20), unique=True, nullable=False)
 
     def __repr__(self) -> str:
         return f"Card(ID: '{self.rfid_id}')"

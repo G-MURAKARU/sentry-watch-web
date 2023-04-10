@@ -7,7 +7,6 @@ app = Flask(__name__)
 
 # configure SECRET_KEY and SQLALCHEMY_DATABASE_URI in separate config.py file
 app.config.from_pyfile("../instance/config.py")
-print(app.config)
 
 
 # connecting to and manipulating (CRUD) the app's database

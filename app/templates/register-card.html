@@ -4,22 +4,36 @@
     <form method="POST" action="">
       {{ form.hidden_tag() }}
       <fieldset class="form-group">
-        <legend class="border-bottom mb-4">Register RFID Card</legend>
-        <div class="form-group my-4">
-          {{ form.card_id.label(class="form-control-label") }} {% if
-          form.card_id.errors %} {{ form.card_id(class="form-control
-          form-control-lg is-invalid") }}
-          <div class="invalid-feedback">
-            {% for error in form.card_id.errors %}
-            <span>{{ error }}</span>
-            {% endfor %}
+        <legend class="border-bottom mb-4">{{ legend }}</legend>
+        <div class="row">
+          <div class="col-6 form-group my-4">
+            {{ form.alias.label(class="form-control-label") }} {% if
+            form.alias.errors %} {{ form.alias(class="form-control
+            form-control-lg is-invalid") }}
+            <div class="invalid-feedback">
+              {% for error in form.alias.errors %}
+              <span>{{ error }}</span>
+              {% endfor %}
+            </div>
+            {% else %} {{ form.alias(class="form-control form-control-lg")}} {%
+            endif %}
           </div>
-          {% else %} {{ form.card_id(class="form-control form-control-lg")}} {%
-          endif %}
+          <div class="col-6 form-group my-4">
+            {{ form.rfid_id.label(class="form-control-label") }} {% if
+            form.rfid_id.errors %} {{ form.rfid_id(class="form-control
+            form-control-lg is-invalid") }}
+            <div class="invalid-feedback">
+              {% for error in form.rfid_id.errors %}
+              <span>{{ error }}</span>
+              {% endfor %}
+            </div>
+            {% else %} {{ form.rfid_id(class="form-control form-control-lg")}}
+            {% endif %}
+          </div>
         </div>
       </fieldset>
       <div class="form-group mt-2 mb-4">
-        {{ form.submit(class="btn btn-outline-info") }}
+        {{ form.submit(class="btn btn-outline-info rounded-pill") }}
       </div>
     </form>
   </div>

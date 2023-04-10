@@ -4,6 +4,13 @@
   <div class="media-body">
     <p class="lead">Shift Start: {{ start|readable }}</p>
     <p class="lead">Shift End: {{ end|readable }}</p>
+    <p class="lead">
+      Shift Completed:
+      <svg height="20" width="20" class="my-2">
+        {% if completed %} {% include 'green-circle.html' %} {% else %} {%
+        include 'red-circle.html' %} {% endif %}
+      </svg>
+    </p>
     <table class="table">
       <caption>
         <i>Shows how often a path is patrolled, combining all sentries</i>
@@ -34,8 +41,12 @@
 <article class="media content-section">
   <div class="media-body">
     <div class="article-metadata">
-      <a class="mr-2" href="#">{{ sentry.name }}</a>
-      <small class="text-muted">{{ sentry.card }}</small>
+      <p class="my-2 article-title">
+        <u>{{ sentry.name.upper() }}</u>
+        <small class="text-muted px-2"
+          >CARD ID: {{ sentry.card.upper() }}</small
+        >
+      </p>
     </div>
     <table class="table">
       <thead class="bg-steel">
@@ -54,25 +65,8 @@
           <td>{{ route.time|readable }}</td>
           <td>
             <svg height="20" width="20">
-              {% if route.checked %}
-              <circle
-                cx="10"
-                cy="10"
-                r="8"
-                stroke="black"
-                stroke-width="1"
-                fill="green"
-              />
-              {% else %}
-              <circle
-                cx="10"
-                cy="10"
-                r="8"
-                stroke="black"
-                stroke-width="1"
-                fill="red"
-              />
-              {% endif %}
+              {% if route.checked %} {% include 'green-circle.html' %} {% else
+              %} {% include 'red-circle.html' %} {% endif %}
             </svg>
           </td>
         </tr>
@@ -83,7 +77,63 @@
 </article>
 {% endfor %}
 <div class="container text-center">
-  <a class="btn btn-danger rounded-pill" href="#">Delete Shift</a>
+  <!-- from Bootstrap website, static modal -->
+  <button
+    type="button"
+    class="btn btn-outline-danger rounded-pill"
+    data-bs-toggle="modal"
+    data-bs-target="#delete-shift"
+  >
+    Delete Shift
+  </button>
 </div>
+<!-- Modal -->
+<!-- from Bootstrap website, static modal -->
+<div
+  class="modal fade"
+  id="delete-shift"
+  data-bs-backdrop="static"
+  data-bs-keyboard="false"
+  tabindex="-1"
+  aria-labelledby="staticBackdropLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="staticBackdropLabel">
+          Deleting Shift...
+        </h1>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">Delete Shift?</div>
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-outline-secondary rounded-pill"
+          data-bs-dismiss="modal"
+        >
+          Close
+        </button>
+        <form
+          action="{{ url_for('delete_circuit', shift_id=shift_id) }}"
+          method="POST"
+        >
+          <input
+            class="btn btn-outline-danger rounded-pill"
+            type="submit"
+            value="Delete Shift"
+          />
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<!--end Modal-->
 
 {% endblock content %}

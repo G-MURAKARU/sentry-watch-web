@@ -1,0 +1,95 @@
+{% extends 'layout.html' %}{% block content %}
+<h2>All Registered Sentries</h2>
+<article class="media content-section">
+  <div class="media-body">
+    <table class="table">
+      <thead class="bg-steel">
+        <tr>
+          <th scope="col" style="color: white">#</th>
+          <th scope="col" style="color: white">National ID</th>
+          <th scope="col" style="color: white">Full Name</th>
+          <th scope="col" style="color: white">Phone Number</th>
+          <th scope="col" style="color: white">Delete Sentry</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        {% for sentry in sentries %}
+        <tr>
+          <th scope="row">{{ sentry.id }}</th>
+          <td>{{ sentry.national_id }}</td>
+          <td>{{ sentry.full_name }}</td>
+          <td>{{ sentry.phone_no }}</td>
+          <td class="align-middle">
+            <div class="row my-2" style="width: 150px">
+              <a
+                class="btn btn-outline-info rounded-pill"
+                href="{{ url_for('update_sentry', sentry_id=sentry.id) }}"
+                >Edit Sentry Info</a
+              >
+            </div>
+            <div class="row my-2" style="width: 150px">
+              <!-- from Bootstrap website, static modal -->
+              <button
+                type="button"
+                class="btn btn-outline-danger rounded-pill"
+                data-bs-toggle="modal"
+                data-bs-target="#delete-sentry"
+              >
+                Delete Sentry
+              </button>
+              <!-- Modal -->
+              <div
+                class="modal fade"
+                id="delete-sentry"
+                data-bs-backdrop="static"
+                data-bs-keyboard="false"
+                tabindex="-1"
+                aria-labelledby="staticBackdropLabel"
+                aria-hidden="true"
+              >
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h1 class="modal-title fs-5" id="staticBackdropLabel">
+                        Deleting Sentry...
+                      </h1>
+                      <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"
+                      ></button>
+                    </div>
+                    <div class="modal-body">Delete Sentry?</div>
+                    <div class="modal-footer">
+                      <button
+                        type="button"
+                        class="btn btn-outline-secondary rounded-pill"
+                        data-bs-dismiss="modal"
+                      >
+                        Close
+                      </button>
+                      <form
+                        action="{{ url_for('delete_sentry', sentry_id=sentry.id) }}"
+                        method="POST"
+                      >
+                        <input
+                          class="btn btn-outline-danger rounded-pill"
+                          type="submit"
+                          value="Delete Sentry"
+                        />
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!--end Modal-->
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+{% endblock content %}

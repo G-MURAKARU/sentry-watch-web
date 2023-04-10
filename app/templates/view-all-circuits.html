@@ -1,0 +1,112 @@
+{% extends 'layout.html' %}{% block content %}
+<h2>All Shifts / Circuits</h2>
+<article class="media content-section">
+  <div class="media-body">
+    <table class="table">
+      <thead class="bg-steel">
+        <tr>
+          <th scope="col" style="color: white">#</th>
+          <th scope="col" style="color: white">Day</th>
+          <th scope="col" style="color: white">Shift Start</th>
+          <th scope="col" style="color: white">Shift End</th>
+          <th scope="col" style="color: white; width: 400px">
+            Sentries On Duty
+          </th>
+          <th scope="col" style="color: white">Status</th>
+          <th scope="col" style="color: white">Delete Shift</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        {% for circuit in circuits %}
+        <tr>
+          <th scope="row">{{ circuit.id }}</th>
+          <td>{{ circuit.shift_start|readable_day }}</td>
+          <td>{{ circuit.shift_start|readable_time }}</td>
+          <td>{{ circuit.shift_end|readable_time }}</td>
+          <td>
+            <dl class="row mb-1">
+              {% for sentry in circuit.sentries %}
+              <dt class="col-6 mb-1">{{ sentry[0] }}</dt>
+              <dd class="col-6 mb-1">Card: {{ sentry[1].upper() }}</dd>
+              {% endfor %}
+            </dl>
+          </td>
+          {% if completed %}
+          <td>COMPLETE</td>
+          {% else %}
+          <td>INCOMPLETE</td>
+          {% endif %}
+          <td class="align-middle">
+            <div class="row my-2">
+              <a
+                class="btn btn-outline-info rounded-pill"
+                href="{{ url_for('view_one_circuit', shift_id=circuit.id) }}"
+                >View Shift</a
+              >
+            </div>
+            <div class="row my-2">
+              <!-- from Bootstrap website, static modal -->
+              <button
+                type="button"
+                class="btn btn-outline-danger rounded-pill"
+                data-bs-toggle="modal"
+                data-bs-target="#delete-shift"
+              >
+                Delete Shift
+              </button>
+              <!-- Modal -->
+              <div
+                class="modal fade"
+                id="delete-shift"
+                data-bs-backdrop="static"
+                data-bs-keyboard="false"
+                tabindex="-1"
+                aria-labelledby="staticBackdropLabel"
+                aria-hidden="true"
+              >
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h1 class="modal-title fs-5" id="staticBackdropLabel">
+                        Deleting Shift...
+                      </h1>
+                      <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"
+                      ></button>
+                    </div>
+                    <div class="modal-body">Delete Shift?</div>
+                    <div class="modal-footer">
+                      <button
+                        type="button"
+                        class="btn btn-outline-secondary rounded-pill"
+                        data-bs-dismiss="modal"
+                      >
+                        Close
+                      </button>
+                      <form
+                        action="{{ url_for('delete_circuit', shift_id=circuit.id) }}"
+                        method="POST"
+                      >
+                        <input
+                          class="btn btn-outline-danger rounded-pill"
+                          type="submit"
+                          value="Delete Shift"
+                        />
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!--end Modal-->
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+{% endblock content %}

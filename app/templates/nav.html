@@ -28,13 +28,14 @@
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <div class="vr" style="color: white; width: 2px"></div>
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <li class="nav-item">
             <a
               class="nav-link active"
               aria-current="page"
               href="{{ url_for('view_current_route') }}"
-              >View Circuit</a
+              >View Current Circuit</a
             >
           </li>
           <li class="nav-item">
@@ -46,17 +47,31 @@
             >
           </li>
           <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('view_all_circuits') }}"
+              >View All Circuits</a
+            >
+          </li>
+          <div class="vr" style="color: white; width: 2px"></div>
+          <li class="nav-item">
             <a class="nav-link" href="{{ url_for('register_sentry') }}"
               >Register Sentries</a
             >
           </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('view_all_sentries') }}"
+              >View Registered Sentries</a
+            >
+          </li>
+          <div class="vr" style="color: white; width: 2px"></div>
           <li class="nav-item">
             <a class="nav-link" href="{{ url_for('register_card') }}"
               >Register ID Cards</a
             >
           </li>
           <li class="nav-item">
-            <a class="nav-link disabled">Disabled</a>
+            <a class="nav-link" href="{{ url_for('view_all_cards') }}"
+              >View Registered Cards</a
+            >
           </li>
         </ul>
         <div class="navbar-nav">

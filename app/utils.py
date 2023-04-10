@@ -109,15 +109,20 @@ def generate_route(
         # sentry route format:
 
         # [{
-        #     id: sentry-on-duty ID
+        #     name: sentry-on-duty name
+        #     card: alias of assigned card
         #     route: a list of sentry's route info, i.e.
         #           [{
-        #               checkpoint: checkpoint at which particular sentry is expected
-        #               time: time at which the sentry is expected
+        #               id: ID of assigned card
+        #               checkpoint: checkpoint at which above sentry is expected
+        #               time: time at which the sentry is expected (epoch)
+        #               checked: whether the sentry has validly checked in or not
         #            }, others...]
         # },
         # others...]
         # done in the outer loop (marked by IDs)
+
+        # the list of dicts marked by the 'route' key will be used to handle belated check-ins
 
         ind_routes: list[dict] = []
 
@@ -126,7 +131,7 @@ def generate_route(
 
         paths: list[tuple] = []
 
-        for name, card in sentries:
+        for name, alias, card in sentries:
             # routes will be generated one sentry (ID) at a time
             # all sentry shifts should start at the same time i.e. at the beginning of the shift
             current_time: int = shift_start
@@ -144,7 +149,7 @@ def generate_route(
             # NB: time here is stored as local date and time (not epoch), derived from epoch time
             route_dict: dict = {
                 "name": name,
-                "card": card,
+                "card": alias,
                 "route": [
                     {
                         "id": card,
@@ -226,4 +231,5 @@ def generate_route(
             break
 
     # info for database storage
+    print(ind_routes)
     return shift_start, shift_end, path_freqs, ind_routes

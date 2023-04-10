@@ -4,7 +4,7 @@
     <form method="POST" action="">
       {{ form.hidden_tag() }}
       <fieldset class="form-group">
-        <legend class="border-bottom mb-4">Register Sentry</legend>
+        <legend class="border-bottom mb-4">{{ legend }}</legend>
         <div class="form-group my-4">
           {{ form.national_id.label(class="form-control-label") }} {% if
           form.national_id.errors %} {{ form.national_id(class="form-control
@@ -43,7 +43,7 @@
         </div>
       </fieldset>
       <div class="form-group mt-2 mb-4">
-        {{ form.submit(class="btn btn-outline-info") }}
+        {{ form.submit(class="btn btn-outline-info rounded-pill") }}
       </div>
     </form>
   </div>

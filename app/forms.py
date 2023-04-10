@@ -1,3 +1,4 @@
+from flask import request
 from datetime import datetime
 from flask_wtf import FlaskForm
 from wtforms import (
@@ -48,7 +49,38 @@ class SentryRegistrationForm(FlaskForm):
     def validate_national_id(self, national_id):
         if Sentry.query.filter_by(national_id=national_id.data).first():
             raise ValidationError(
-                f"Sentry with ID: {national_id.data} already regsitered."
+                f"Sentry with ID: {national_id.data} already registered."
+            )
+
+
+class UpdateSentryForm(FlaskForm):
+    """
+    Update form for sentries
+    """
+
+    national_id = StringField(
+        "National ID",
+        validators=[
+            InputRequired(),
+            Length(min=7, max=8, message="Input valid National ID"),
+        ],
+    )
+    full_name = StringField("Full Name", validators=[InputRequired()])
+    phone_no = StringField(
+        "Phone Number",
+        validators=[
+            InputRequired(),
+            Length(min=13, max=13, message="Input valid phone number"),
+        ],
+        description="format: e.g. +254...",
+    )
+    submit = SubmitField("Update")
+
+    def validate_national_id(self, national_id):
+        sentry = Sentry.query.filter_by(national_id=national_id.data).first()
+        if sentry and sentry.id != request.args.get("id"):
+            raise ValidationError(
+                f"Sentry with ID: {national_id.data} already registered."
             )
 
 
@@ -57,19 +89,56 @@ class CardRegistrationForm(FlaskForm):
     Registration form for (RFID) ID cards
     """
 
-    card_id = StringField(
+    rfid_id = StringField(
         "Card ID",
         validators=[
             InputRequired(),
             Length(min=11, max=11, message="Input valid card ID"),
         ],
     )
+    alias = StringField("Card Alias/Name", validators=[InputRequired()])
     submit = SubmitField("Register")
 
-    def validate_card_id(self, card_id):
-        if Card.query.filter_by(rfid_id=card_id.data).first():
+    def validate_card_id(self, rfid_id):
+        if Card.query.filter_by(rfid_id=rfid_id.data).first():
             raise ValidationError(
-                f"Card with ID: {card_id.data} already regsitered."
+                f"Card with ID: {rfid_id.data} already registered."
+            )
+
+    def validate_alias(self, alias):
+        if Card.query.filter_by(alias=alias.data).first():
+            raise ValidationError(
+                f"Card with alias: {alias.data} already registered."
+            )
+
+
+class UpdateCardForm(FlaskForm):
+    """
+    Registration form for (RFID) ID cards
+    """
+
+    rfid_id = StringField(
+        "Card ID",
+        validators=[
+            InputRequired(),
+            Length(min=11, max=11, message="Input valid card ID"),
+        ],
+    )
+    alias = StringField("Card Alias/Name", validators=[InputRequired()])
+    submit = SubmitField("Update")
+
+    def validate_card_id(self, rfid_id):
+        card = Card.query.filter_by(rfid_id=rfid_id.data).first()
+        if card and card.id != request.args.get("id"):
+            raise ValidationError(
+                f"Card with ID: {rfid_id.data} already registered."
+            )
+
+    def validate_alias(self, alias):
+        card = Card.query.filter_by(alias=alias.data).first()
+        if card and card.id != request.args.get("id"):
+            raise ValidationError(
+                f"Card with alias: {alias.data} already registered."
             )
 
 
@@ -134,7 +203,7 @@ class CircuitGenerationForm(FlaskForm):
         "Cards",
         query_factory=lambda: Card.query.all(),
         allow_blank=False,
-        get_label="rfid_id",
+        get_label="alias",
         validators=[InputRequired()],
     )
     submit = SubmitField("Generate Circuit")
@@ -162,7 +231,7 @@ class CircuitSelectionForm(FlaskForm):
     circuit = QuerySelectField(
         "Circuit",
         query_factory=lambda: Shift.query.filter(Shift.completed == False)
-        .filter(Shift.shift_start > datetime.timestamp(datetime.now()))
+        .filter(Shift.shift_end > datetime.timestamp(datetime.now()))
         .order_by(Shift.shift_start)
         .all(),
         allow_blank=False,

@@ -1,0 +1,93 @@
+{% extends 'layout.html' %}{% block content %}
+<h2>All Registered RFID Cards</h2>
+<article class="media content-section">
+  <div class="media-body">
+    <table class="table">
+      <thead class="bg-steel">
+        <tr>
+          <th scope="col" style="color: white">#</th>
+          <th scope="col" style="color: white">Card Alias</th>
+          <th scope="col" style="color: white">Card ID</th>
+          <th scope="col" style="color: white">Delete Card</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        {% for card in cards %}
+        <tr>
+          <th scope="row">{{ card.id }}</th>
+          <td>{{ card.alias }}</td>
+          <td>{{ card.rfid_id.upper() }}</td>
+          <td class="align-middle">
+            <div class="row my-2" style="width: 150px">
+              <a
+                class="btn btn-outline-info rounded-pill"
+                href="{{ url_for('update_card', card_id=card.id) }}"
+                >Edit Card Info</a
+              >
+            </div>
+            <!-- from Bootstrap website, static modal -->
+            <div class="row my-2" style="width: 150px">
+              <button
+                type="button"
+                class="btn btn-outline-danger rounded-pill"
+                data-bs-toggle="modal"
+                data-bs-target="#delete-card"
+              >
+                Delete Card
+              </button>
+              <!-- Modal -->
+              <div
+                class="modal fade"
+                id="delete-card"
+                data-bs-backdrop="static"
+                data-bs-keyboard="false"
+                tabindex="-1"
+                aria-labelledby="staticBackdropLabel"
+                aria-hidden="true"
+              >
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h1 class="modal-title fs-5" id="staticBackdropLabel">
+                        Deleting Card...
+                      </h1>
+                      <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"
+                      ></button>
+                    </div>
+                    <div class="modal-body">Delete Card?</div>
+                    <div class="modal-footer">
+                      <button
+                        type="button"
+                        class="btn btn-outline-secondary rounded-pill"
+                        data-bs-dismiss="modal"
+                      >
+                        Close
+                      </button>
+                      <form
+                        action="{{ url_for('delete_card', card_id=card.id) }}"
+                        method="POST"
+                      >
+                        <input
+                          class="btn btn-outline-danger rounded-pill"
+                          type="submit"
+                          value="Delete Card"
+                        />
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!--end Modal-->
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+{% endblock content %}

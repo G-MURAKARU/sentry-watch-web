@@ -1,8 +1,6 @@
 from datetime import datetime
 import random
 import copy
-from operator import itemgetter
-from collections import deque
 from collections import Counter
 
 
@@ -29,6 +27,9 @@ durations = {
     (C, D): 1200,
     (D, A): 1500,
 }
+
+# check-in window - x seconds before and after the set check-in time within which a scan is considered valid
+CHECK_IN_WINDOW = 120
 
 # route generation algorithm, will loop repeatedly until a valid route is generated
 # criteria for a valid route:
@@ -84,27 +85,11 @@ def generate_route(
 ):
     # necessary epoch times to evaluate - start of shift and end of shift
     # combines sent date and sent time
-    shift_start: int = datetime.timestamp(
-        datetime.combine(start_date, start_time)
-    )
+    shift_start: int = datetime.timestamp(datetime.combine(start_date, start_time))
     shift_dur: int = (shift_dur_hour * 60 * 60) + (shift_dur_min * 60)
     shift_end: int = shift_start + shift_dur
 
     while True:
-        # routes list stores instantaneous check-in information (dictionaries)
-        # check-in information format:
-
-        # [{
-        #     id: sentry ID to expect
-        #     checkpoint: checkpoint at which above sentry is expected
-        #     time: time at which the sentry is expected (epoch)
-        #     checked: whether the sentry has validly checked in or not
-        # },
-        # others...]
-        # done in the inner loop (marked by timestamps)
-
-        routes: list[dict] = []
-
         # ind_routes list stores each sentry's route, for record-keeping/reference
         # sentry route format:
 
@@ -138,18 +123,13 @@ def generate_route(
 
             # each route will start at a random checkpoint, and check-in info is stored in routes list
             starting_checkpoint: str = random.choice([A, B, C, D])
-            id_dict: dict = {
-                "id": card,
-                "checkpoint": starting_checkpoint,
-                "time": current_time,
-                "checked": False,
-            }
 
-            # individual check-in info is also stored at beginning of shift
-            # NB: time here is stored as local date and time (not epoch), derived from epoch time
+            # individual check-in info is stored at beginning of shift
+            # time stored as epoch time
             route_dict: dict = {
                 "name": name,
                 "card": alias,
+                "id": card,
                 "route": [
                     {
                         "id": card,
@@ -159,10 +139,6 @@ def generate_route(
                     }
                 ],
             }
-
-            # check-in info in routes list
-            # need to store a copy of the dict - dict is a reference data type
-            routes.append(copy.deepcopy(id_dict))
 
             # second, explained above
             second: str = ""
@@ -192,12 +168,6 @@ def generate_route(
                 # update the current time path to reflect the time offset (time taken to patrol generated path)
                 current_time += path_duration
 
-                # create the check-in info dictionary
-                id_dict["id"] = card
-                id_dict["checkpoint"] = second
-                id_dict["time"] = current_time
-                id_dict["checked"] = False
-
                 # create a route entry for the current sentry
                 route_dict["route"].append(
                     {
@@ -207,9 +177,6 @@ def generate_route(
                         "checked": False,
                     }
                 )
-
-                # copy check-in info dict to routes list
-                routes.append(copy.deepcopy(id_dict))
 
                 # add the current path to paths list
                 paths.append(path)
@@ -224,12 +191,25 @@ def generate_route(
         # checking the valid path criteria outlined above,
         # if valid then break out of 'while True' loop
         # if not, loop again
-        if (
-            len(path_freqs) == 4
-            and (path_freqs[0][1] - path_freqs[-1][1]) < 3
-        ):
+        if len(path_freqs) == 4 and (path_freqs[0][1] - path_freqs[-1][1]) < 3:
             break
 
     # info for database storage
-    print(ind_routes)
     return shift_start, shift_end, path_freqs, ind_routes
+
+
+# TODO: create a function for validating a scan
+def update_circuit(circuits: list[dict], scan_info: dict):
+    for circuit in circuits:
+        if circuit["id"] == scan_info["sentry-id"]:
+            for route in circuit["route"]:
+                # if scan is valid (right sentry, right checkpoint, right time), return message
+                if (
+                    scan_info["sentry-id"] == route["id"]
+                    and scan_info["checkpoint"] == route["checkpoint"]
+                    and scan_info["scan-time"]
+                    in range(route["time"] - CHECK_IN_WINDOW, route["time"] + CHECK_IN_WINDOW)
+                ):
+                    route["checked"] = True
+                break
+            break

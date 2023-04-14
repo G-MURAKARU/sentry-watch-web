@@ -1,9 +1,10 @@
-import paho.mqtt.client as mqtt
 import json
-from operator import itemgetter
+import time
 from collections import deque
 from datetime import datetime
-import time
+from operator import itemgetter
+
+import paho.mqtt.client as mqtt
 from dotenv import dotenv_values
 
 # CLIENT CREDENTIALS
@@ -49,7 +50,7 @@ SENTRY_SCAN = "sentry-platform/checkpoints/sentry-scan-info"
 
 # PUBLISH:
 
-# topics to publish when a scan is overdue, for each cehckpoint A, B, C, D
+# topics to publish when a scan is overdue, for each checkpoint A, B, C, D
 # NOTE: the backend server will subscribe to all below topics
 CHK_A_OVERDUE = "sentry-platform/checkpoints/A/overdue-scan"
 CHK_B_OVERDUE = "sentry-platform/checkpoints/B/overdue-scan"
@@ -188,7 +189,9 @@ def on_mqtt_connect(client: mqtt.Client, userdata, flags, rc):
     """
 
     if rc == 0:
-        client.publish(topic=CONNECTED, payload="connected")
+        print("Connected!!")
+        payload = {"id": CLIENT_ID, "connected": True}
+        client.publish(topic=CONNECTED, payload=json.dumps(payload))
 
         # subscribe to relevant topics each time it connects
         # this includes at startup and reconnection
@@ -199,9 +202,14 @@ def on_mqtt_connect(client: mqtt.Client, userdata, flags, rc):
 
 
 def on_mqtt_message(client, userdata, message):
-    """ """
+    """
+    callback event handler, called when a message is published on any subscribed topic
+    """
 
     topic = message.topic
+
+    global CIRCUIT
+    global SHIFT_STATUS
 
     # circuit sent by the broker
     if topic == SENTRY_CIRCUIT:
@@ -222,7 +230,6 @@ def on_mqtt_message(client, userdata, message):
         # which is what is stored in the 'route' key of each dict
         # this is essentially a list/queue of check-ins
 
-        global CIRCUIT
         CIRCUIT = generate_checkins(payload)
         analyse_checkins(client=client)
 
@@ -249,9 +256,6 @@ def on_mqtt_message(client, userdata, message):
     elif topic == SHIFT_ON_OFF:
         payload = message.payload.decode("utf-8")
 
-        global CIRCUIT
-        global SHIFT_STATUS
-
         # if shift is on, set shift_status to active(True)
         # if not, set shift status to inactive(False) and clear the check-ins being analysed
 
@@ -266,15 +270,24 @@ def on_mqtt_message(client, userdata, message):
             SHIFT_STATUS = True
 
 
+def on_mqtt_disconnect():
+    print("disconnected")
+
+
 def launch_circuit_handler():
     # create client instance
     handler = mqtt.Client(client_id=CLIENT_ID, clean_session=True, reconnect_on_failure=True)
     # configure client with broker credentials
     handler.username_pw_set(username=MQTT_UNAME, password=MQTT_PASS)
+    # set LWT message
+    lwt = {"id": CLIENT_ID, "connected": False}
+    handler.will_set(topic=CONNECTED, payload=json.dumps(lwt))
     # attach defined event callback functions to created client
     handler.on_connect = on_mqtt_connect
     handler.on_message = on_mqtt_message
+    handler.on_disconnect = on_mqtt_disconnect
     # connect to broker asynchronously
+    time.sleep(5)  # wait for 5 seconds after web app launch to connect
     handler.connect_async(host=MQTT_HOST, keepalive=3600)
     # start listening loop on a background thread
     handler.loop_start()

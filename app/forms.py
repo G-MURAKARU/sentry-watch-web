@@ -1,26 +1,20 @@
-from flask import request
 from datetime import datetime
+
+from flask import request
 from flask_wtf import FlaskForm
 from wtforms import (
-    StringField,
-    PasswordField,
-    SubmitField,
     BooleanField,
-    SelectField,
-    TimeField,
     DateField,
+    PasswordField,
+    SelectField,
+    StringField,
+    SubmitField,
+    TimeField,
 )
-from wtforms.validators import (
-    InputRequired,
-    Length,
-    Email,
-    ValidationError,
-)
-from wtforms_sqlalchemy.fields import (
-    QuerySelectMultipleField,
-    QuerySelectField,
-)
-from app.models import Sentry, Card, Shift
+from wtforms.validators import Email, InputRequired, Length, ValidationError
+from wtforms_sqlalchemy.fields import QuerySelectField, QuerySelectMultipleField
+
+from app.models import Card, Sentry, Shift
 
 
 class SentryRegistrationForm(FlaskForm):
@@ -48,9 +42,7 @@ class SentryRegistrationForm(FlaskForm):
 
     def validate_national_id(self, national_id):
         if Sentry.query.filter_by(national_id=national_id.data).first():
-            raise ValidationError(
-                f"Sentry with ID: {national_id.data} already registered."
-            )
+            raise ValidationError(f"Sentry with ID: {national_id.data} already registered.")
 
 
 class UpdateSentryForm(FlaskForm):
@@ -79,9 +71,7 @@ class UpdateSentryForm(FlaskForm):
     def validate_national_id(self, national_id):
         sentry = Sentry.query.filter_by(national_id=national_id.data).first()
         if sentry and sentry.id != request.args.get("id"):
-            raise ValidationError(
-                f"Sentry with ID: {national_id.data} already registered."
-            )
+            raise ValidationError(f"Sentry with ID: {national_id.data} already registered.")
 
 
 class CardRegistrationForm(FlaskForm):
@@ -101,15 +91,11 @@ class CardRegistrationForm(FlaskForm):
 
     def validate_card_id(self, rfid_id):
         if Card.query.filter_by(rfid_id=rfid_id.data).first():
-            raise ValidationError(
-                f"Card with ID: {rfid_id.data} already registered."
-            )
+            raise ValidationError(f"Card with ID: {rfid_id.data} already registered.")
 
     def validate_alias(self, alias):
         if Card.query.filter_by(alias=alias.data).first():
-            raise ValidationError(
-                f"Card with alias: {alias.data} already registered."
-            )
+            raise ValidationError(f"Card with alias: {alias.data} already registered.")
 
 
 class UpdateCardForm(FlaskForm):
@@ -130,16 +116,12 @@ class UpdateCardForm(FlaskForm):
     def validate_card_id(self, rfid_id):
         card = Card.query.filter_by(rfid_id=rfid_id.data).first()
         if card and card.id != request.args.get("id"):
-            raise ValidationError(
-                f"Card with ID: {rfid_id.data} already registered."
-            )
+            raise ValidationError(f"Card with ID: {rfid_id.data} already registered.")
 
     def validate_alias(self, alias):
         card = Card.query.filter_by(alias=alias.data).first()
         if card and card.id != request.args.get("id"):
-            raise ValidationError(
-                f"Card with alias: {alias.data} already registered."
-            )
+            raise ValidationError(f"Card with alias: {alias.data} already registered.")
 
 
 class LoginForm(FlaskForm):
@@ -213,10 +195,7 @@ class CircuitGenerationForm(FlaskForm):
         if not valid:
             return False
 
-        if (
-            datetime.combine(self.shift_date.data, self.start.data)
-            < datetime.now()
-        ):
+        if datetime.combine(self.shift_date.data, self.start.data) < datetime.now():
             self.start.errors.append("Invalid time.")
             return False
 

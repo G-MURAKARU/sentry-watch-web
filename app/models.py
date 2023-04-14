@@ -1,8 +1,10 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean
-from datetime import datetime
 from ast import literal_eval
-from app import db, login_manager
+from datetime import datetime
+
 from flask_login import UserMixin
+from sqlalchemy import Boolean, Column, Integer, String, Text
+
+from app import db, login_manager
 
 
 # to manage supervisor's login session
@@ -90,6 +92,7 @@ class Shift(db.Model):
     def alarms(self, alarm):
         self._alarms = str(alarm)
 
+    # this will be used to format the appearance of the shift in the form for selecting a circuit
     def __str__(self) -> str:
         day_time = datetime.fromtimestamp(self.shift_start)
         day = day_time.strftime("%d/%m/%Y")

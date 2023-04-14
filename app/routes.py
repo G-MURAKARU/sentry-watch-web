@@ -1,21 +1,26 @@
-from flask import render_template, url_for, flash, redirect, request
-from app import app, db, bcrypt
-from app.forms import (
-    SentryRegistrationForm,
+import json
+from datetime import datetime
+
+from flask import flash, redirect, render_template, request, url_for
+from flask_login import current_user, login_required, login_user, logout_user
+
+import app.utils as utils
+from app import app, bcrypt, db, mqtt, socketio
+
+from .forms import (
     CardRegistrationForm,
     CircuitGenerationForm,
-    LoginForm,
     CircuitSelectionForm,
-    UpdateSentryForm,
+    LoginForm,
+    SentryRegistrationForm,
     UpdateCardForm,
+    UpdateSentryForm,
 )
-from .models import Sentry, Card, Shift, Supervisor
-from datetime import datetime
-import app.utils as utils
-from flask_login import login_user, current_user, logout_user, login_required
 
+from .models import Card, Sentry, Shift, Supervisor
+from .mqtts import ALARM, ALERTS, CHKS_OVERDUE, CONNECTED, DONE, SENTRY_SCAN, SHIFT_ON_OFF
 
-SHIFT = False
+SHIFT_STATUS = False
 CURRENT_CIRCUIT = None
 SENTRY_CIRCUIT = None
 CIRCUIT_COMPLETED = False
@@ -23,6 +28,24 @@ PATHS = None
 START = 0
 END = 0
 ALARMS = None
+ALARM_TRIGGERED = False
+
+# CONNECTION FLAGS
+# these will display connected (green) or disconnected (red) on the homepage
+# if supervisor is logged in
+
+# web app connected to broker
+APP_CONNECTED = False
+# circuit handler connected to broker
+HANDLER_CONNECTED = False
+# checkpoint A connected to broker
+CHK_A_CONNECTED = False
+# checkpoint B connected to broker
+CHK_B_CONNECTED = False
+# checkpoint C connected to broker
+CHK_C_CONNECTED = False
+# checkpoint D connected to broker
+CHK_D_CONNECTED = False
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -32,9 +55,7 @@ def home():
 
     if form.validate_on_submit():
         supervisor = Supervisor.query.filter_by(email=form.email.data).first()
-        if supervisor and bcrypt.check_password_hash(
-            supervisor.password, form.password.data
-        ):
+        if supervisor and bcrypt.check_password_hash(supervisor.password, form.password.data):
             login_user(supervisor, remember=form.remember.data)
             flash("Login successful.", "success")
             return (
@@ -45,7 +66,18 @@ def home():
         else:
             flash("Wrong credentials.", "danger")
 
-    return render_template("home.html", title="Home", form=form)
+    return render_template(
+        "home.html",
+        title="Home",
+        form=form,
+        app_connected=APP_CONNECTED,
+        handler_connected=HANDLER_CONNECTED,
+        chkA_connected=CHK_A_CONNECTED,
+        chkB_connected=CHK_B_CONNECTED,
+        chkC_connected=CHK_C_CONNECTED,
+        chkD_connected=CHK_D_CONNECTED,
+        alarm_triggered=ALARM_TRIGGERED,
+    )
 
 
 @app.route("/circuit/create", methods=["GET", "POST"])
@@ -65,8 +97,7 @@ def create_route():
             date = form.shift_date.data
             time = form.start.data
             assignments = [
-                (sentries[x].full_name, cards[x].alias, cards[x].rfid_id)
-                for x in range(len(cards))
+                (sentries[x].full_name, cards[x].alias, cards[x].rfid_id) for x in range(len(cards))
             ]
             hours = int(form.shift_dur_hour.data)
             minutes = int(form.shift_dur_min.data)
@@ -89,9 +120,7 @@ def create_route():
             flash("Circuit generated.", "success")
             return redirect(url_for("view_current_route"))
 
-    return render_template(
-        "generate-route.html", title="Generate Route", form=form
-    )
+    return render_template("generate-route.html", title="Generate Route", form=form)
 
 
 @app.template_filter("readable")
@@ -170,8 +199,8 @@ def select_circuit():
     if form.validate_on_submit():
         circuit = form.circuit.data
 
-        global SHIFT
-        SHIFT = True
+        global SHIFT_STATUS
+        SHIFT_STATUS = True
         global CURRENT_CIRCUIT
         CURRENT_CIRCUIT = circuit.id
         global SENTRY_CIRCUIT
@@ -182,6 +211,12 @@ def select_circuit():
         START = circuit.shift_start
         global END
         END = circuit.shift_end
+        global CIRCUIT_COMPLETED
+        CIRCUIT_COMPLETED = circuit.completed
+
+        # publish to circuit handler and checkpoints that shift is now being monitored
+        mqtt.publish(topic=SHIFT_ON_OFF, payload="ON")
+
         flash("Shift set!", "success")
         return redirect(url_for("view_current_route"))
 
@@ -205,8 +240,8 @@ def save_current_circuit():
 @app.route("/circuit/deselect")
 @login_required  # ensures that supervisor is logged in to access
 def deselect_circuit():
-    global SHIFT
-    SHIFT = False
+    global SHIFT_STATUS
+    SHIFT_STATUS = False
     global CURRENT_CIRCUIT
     CURRENT_CIRCUIT = None
     global SENTRY_CIRCUIT
@@ -215,6 +250,10 @@ def deselect_circuit():
     START = 0
     global END
     END = 0
+
+    # publish to circuit handler and checkpoints that shift is no longer being monitored
+    mqtt.publish(topic=SHIFT_ON_OFF, payload="OFF")
+
     flash("Shift Deselected.", "info")
     return redirect(url_for("select_circuit"))
 
@@ -343,4 +382,95 @@ def delete_card(card_id):
     return redirect(url_for("view_all_cards"))
 
 
-password = "$2b$12$PqffSm1f9TGFmU0MwYTCXOz70YS3XjeW0B6iYybiv6IBlZpqjV59O"
+@mqtt.on_connect()
+def on_mqtt_connect(client, userdata, flags, rc):
+    global APP_CONNECTED
+
+    # rc = return code (CONNACK). on successful connection, rc = 0
+    if rc == 0:
+        APP_CONNECTED = True
+        payload = {"id": "sentry-platform", "connected": True}
+        socketio.emit(event="client-connect", data=payload)
+        for topic in [CHKS_OVERDUE, SENTRY_SCAN, CONNECTED, ALERTS, DONE]:
+            mqtt.subscribe(topic=topic, qos=2)
+
+
+@mqtt.on_message()
+def on_mqtt_message(client, userdata, message):
+    topic = message.topic
+
+    # any topic ending with 'connected' e.g. "sentry-platform/checkpoints/connected"
+    if topic.split("/")[-1] == "connected":
+        payload: dict = json.loads(message.payload)
+
+        # expected payload (JSON string) of the form
+        # {
+        #     id: client identifier
+        #     connected: true if connected, false id disconnected
+        # }
+
+        # goal is to display green if connected, red if disconnected
+
+        client, connected = list(payload.values())
+
+        match client:
+            case "circuit-handler":
+                global HANDLER_CONNECTED
+                HANDLER_CONNECTED = bool(connected)
+            case "checkpoint-A":
+                global CHK_A_CONNECTED
+                CHK_A_CONNECTED = bool(connected)
+            case "checkpoint-B":
+                global CHK_B_CONNECTED
+                CHK_B_CONNECTED = bool(connected)
+            case "checkpoint-C":
+                global CHK_C_CONNECTED
+                CHK_C_CONNECTED = bool(connected)
+            case "checkpoint-D":
+                global CHK_D_CONNECTED
+                CHK_D_CONNECTED = bool(connected)
+
+    # any topic ending with 'overdue-scan' e.g. "sentry-platform/checkpoints/A/overdue-scan"
+    elif topic.split("/")[-1] == "overdue-scan":
+        payload: dict = json.loads(message.payload)
+
+        # expected payload (JSON string) of the form:
+        # {
+        #   id: ID of assigned card
+        #   checkpoint: checkpoint at which above sentry is expected
+        #   time: time at which the sentry is expected (epoch)
+        #   checked: whether the sentry has validly checked in or not
+        # }
+
+        # goal is to display message like
+        # OVERDUE CHECK-IN! Sentry with card ID: {id} expected at checkpoint {checkpoint} at {time}
+        # on the frontend
+        # this will be in layout.html so the message can be flashed regardless of what webpage the supervisor is on
+
+        time = payload["time"]
+        display_time = datetime.fromtimestamp(time).strftime("%H:%M:%S")
+        payload["time"] = display_time
+
+        global ALARM_TRIGGERED
+        ALARM_TRIGGERED = True
+
+        # TODO: publish "ON" to raise alarm topic
+        mqtt.publish(topic=ALARM, payload="ON", qos=2)
+
+        socketio.emit("overdue-scan", data=payload)
+
+
+@socketio.on("silence-alarm")
+def silence_alarm():
+    """
+    deactivates the alarm if it is activated
+    triggered by a socket event from the client, when the 'silence alarm' button is clicked
+    """
+    print("alarm silenced")
+    global ALARM_TRIGGERED
+    ALARM_TRIGGERED = False
+
+    # TODO: publish "OFF" to raise alarm topic
+    mqtt.publish(topic=ALARM, payload="OFF", qos=2)
+
+    return redirect(url_for("home"))

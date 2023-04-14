@@ -1,8 +1,7 @@
-from datetime import datetime
-import random
 import copy
+import random
 from collections import Counter
-
+from datetime import datetime
 
 # TIME WILL BE MANIPULATED IN EPOCH TIME - EASIER TO DO MATH (for the check-in timestamps and check-in window)
 
@@ -96,6 +95,7 @@ def generate_route(
         # [{
         #     name: sentry-on-duty name
         #     card: alias of assigned card
+        #     id: ID of assigned card
         #     route: a list of sentry's route info, i.e.
         #           [{
         #               id: ID of assigned card

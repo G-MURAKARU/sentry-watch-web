@@ -1,0 +1,47 @@
+<div class="content-section">
+  <h3>CONNECTION STATUS</h3>
+  <ul class="list-group">
+    <li class="list-group-item list-group-item-light">
+      Web App:
+      <svg height="20" width="20">
+        {% if app_connected %}{% include 'green-circle.html' %}{% else %}{%
+        include 'red-circle.html' %}{% endif %}
+      </svg>
+    </li>
+    <li class="list-group-item list-group-item-light">
+      Circuit Handler:
+      <svg height="20" width="20">
+        {% if handler_connected %}{% include 'green-circle.html' %}{% else %}{%
+        include 'red-circle.html' %}{% endif %}
+      </svg>
+    </li>
+    <li class="list-group-item list-group-item-light">
+      Checkpoint A:
+      <svg height="20" width="20">
+        {% if chkA_connected %}{% include 'green-circle.html' %}{% else %}{%
+        include 'red-circle.html' %}{% endif %}
+      </svg>
+    </li>
+    <li class="list-group-item list-group-item-light">
+      Checkpoint B:
+      <svg height="20" width="20">
+        {% if chkB_connected %}{% include 'green-circle.html' %}{% else %}{%
+        include 'red-circle.html' %}{% endif %}
+      </svg>
+    </li>
+    <li class="list-group-item list-group-item-light">
+      Checkpoint C:
+      <svg height="20" width="20">
+        {% if chkC_connected %}{% include 'green-circle.html' %}{% else %}{%
+        include 'red-circle.html' %}{% endif %}
+      </svg>
+    </li>
+    <li class="list-group-item list-group-item-light">
+      Checkpoint D:
+      <svg height="20" width="20">
+        {% if chkD_connected %}{% include 'green-circle.html' %}{% else %}{%
+        include 'red-circle.html' %}{% endif %}
+      </svg>
+    </li>
+  </ul>
+</div>

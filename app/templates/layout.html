@@ -26,6 +26,13 @@
       type="text/css"
       href="{{ url_for('static', filename='main.css') }}"
     />
+
+    <!-- JS library for socket programming -->
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"
+      integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA=="
+      crossorigin="anonymous"
+    ></script>
   </head>
   <body>
     {% include 'nav.html' %}
@@ -55,5 +62,39 @@
       integrity="sha384-Y4oOpwW3duJdCWv5ly8SCFYWqFDsfob/3GkgExXKV4idmbt98QcxXYs9UoXAB7BZ"
       crossorigin="anonymous"
     ></script>
+
+    <!-- JS for displaying received MQTT messages -->
+    <script type="text/javascript">
+      var socket = io.connect("http://localhost:5000");
+
+      const show_overdue_scan = (id, chk, time) => {
+        // Create a new alert message
+        var alertMessage = document.createElement("div");
+        alertMessage.classList.add(
+          "alert",
+          "alert-danger",
+          "alert-dismissible",
+          "fade",
+          "show"
+        );
+        alertMessage.setAttribute("role", "alert");
+        alertMessage.innerHTML =
+          "<strong>OVERDUE CHECK-IN!</strong> Sentry with card ID: " +
+          id.toUpperCase() +
+          " expected at checkpoint " +
+          chk +
+          " at " +
+          time +
+          ".";
+
+        // Add the alert message to the top of the main element
+        var main = document.getElementsByTagName("main")[0];
+        main.insertBefore(alertMessage, main.firstChild);
+      };
+
+      socket.on("overdue-scan", (data) => {
+        show_overdue_scan(data.id, data.checkpoint, data.time);
+      });
+    </script>
   </body>
 </html>

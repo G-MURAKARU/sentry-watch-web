@@ -7,6 +7,8 @@ from operator import itemgetter
 import paho.mqtt.client as mqtt
 from dotenv import dotenv_values
 
+from app.utils import CHECK_IN_WINDOW
+
 # CLIENT CREDENTIALS
 
 # client's client ID
@@ -34,9 +36,6 @@ CARDS = None
 # shift ongoing (true) or shift over (false)
 SHIFT_STATUS = False
 
-# check-in window - x seconds before and after the set check-in time within which a scan is considered valid
-CHECK_IN_WINDOW = 120
-
 # DEFINING MQTT TOPICS
 
 # SUBSCRIBE:
@@ -46,7 +45,7 @@ SENTRY_CIRCUIT = "sentry-platform/backend-server/sentry-circuit"
 # topic to receive the shift started/over message
 SHIFT_ON_OFF = "sentry-platform/backend-server/shift-status"
 # topic to receive a scan to validate
-SENTRY_SCAN = "sentry-platform/checkpoints/sentry-scan-info"
+SENTRY_SCAN_INFO = "sentry-platform/checkpoints/sentry-scan-info"
 
 # PUBLISH:
 
@@ -108,8 +107,8 @@ def validate_scan(check_in: dict):
 
     # check if the card should be on duty
     if check_in["sentry-id"] not in CARDS:
-        # TODO: check if card is in the database
-        return {"valid": False, "reason": "card not on duty"}
+        # TODO: check if card is in database
+        return {"valid": False, "reason": "card not on duty"} | check_in
 
     valid_id = False
     valid_time = False
@@ -123,7 +122,7 @@ def validate_scan(check_in: dict):
             in range(item["time"] - CHECK_IN_WINDOW, item["time"] + CHECK_IN_WINDOW)
         ):
             item["checked"] = True
-            return {"valid": True, "reason": ""}
+            return {"valid": True, "reason": ""} | check_in
 
         # if an on-duty card is scanned at the right time but the wrong checkpoint
         # sets flags that indicate this as true
@@ -137,9 +136,9 @@ def validate_scan(check_in: dict):
         # either scan was too early or at the wrong checkpoint
         elif check_in["time"] < (item["time"] - CHECK_IN_WINDOW):
             return (
-                {"valid": False, "reason": "wrong checkpoint"}
+                {"valid": False, "reason": "wrong checkpoint"} | check_in
                 if valid_id and valid_time
-                else {"valid": False, "reason": "wrong time of scan"}
+                else {"valid": False, "reason": "wrong time of scan"} | check_in
             )
 
 
@@ -196,7 +195,7 @@ def on_mqtt_connect(client: mqtt.Client, userdata, flags, rc):
         # subscribe to relevant topics each time it connects
         # this includes at startup and reconnection
         # list of (topic, QoS) tuples
-        client.subscribe([(SENTRY_CIRCUIT, 2), (SHIFT_ON_OFF, 2), (SENTRY_SCAN, 2)])
+        client.subscribe([(SENTRY_CIRCUIT, 2), (SHIFT_ON_OFF, 2), (SENTRY_SCAN_INFO, 2)])
 
     # using connect_async() will retry connection until established
 
@@ -234,7 +233,7 @@ def on_mqtt_message(client, userdata, message):
         analyse_checkins(client=client)
 
     # check-in sent by any checkpoint
-    elif topic == SENTRY_SCAN:
+    elif topic == SENTRY_SCAN_INFO:
         # the check-in info will be sent as a JSON bytearray over MQTT
         payload = json.loads(message.payload)
 

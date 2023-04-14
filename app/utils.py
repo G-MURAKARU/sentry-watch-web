@@ -75,7 +75,7 @@ CHECK_IN_WINDOW = 120
 # to verify that the second valid path criterion is met
 
 
-def generate_route(
+def generate_circuit(
     sentries: list[tuple[str]],
     start_date: datetime,
     start_time: datetime,

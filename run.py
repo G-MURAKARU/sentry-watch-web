@@ -22,4 +22,5 @@ if __name__ == "__main__":
 
     # launching the web app
     # use of socketio (Flask-SocketIO) was recommended in Flask-MQTT's documentation (example)
+    # should be run with debug = False
     socketio.run(app=app, debug=True, use_reloader=False)

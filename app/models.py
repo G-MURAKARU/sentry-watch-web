@@ -33,7 +33,7 @@ class Card(db.Model):
     alias = Column(String(20), unique=True, nullable=False)
 
     def __repr__(self) -> str:
-        return f"Card(ID: '{self.rfid_id}')"
+        return f"{self.rfid_id}"
 
 
 class Shift(db.Model):

@@ -4,7 +4,7 @@
 CHKS_OVERDUE = "sentry-platform/checkpoints/+/overdue-scan"
 
 # topic to receive a scan to validate
-SENTRY_SCAN = "sentry-platform/checkpoints/sentry-scan-info"
+SENTRY_SCAN_INFO = "sentry-platform/checkpoints/sentry-scan-info"
 
 # topic to receive connected message from circuit handler
 CONNECTED = "sentry-platform/+/connected"

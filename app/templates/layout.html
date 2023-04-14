@@ -67,33 +67,26 @@
     <script type="text/javascript">
       var socket = io.connect("http://localhost:5000");
 
-      const show_overdue_scan = (id, chk, time) => {
+      const show_overdue_scan = (alert_level, message) => {
         // Create a new alert message
         var alertMessage = document.createElement("div");
         alertMessage.classList.add(
           "alert",
-          "alert-danger",
+          alert_level,
           "alert-dismissible",
           "fade",
           "show"
         );
         alertMessage.setAttribute("role", "alert");
-        alertMessage.innerHTML =
-          "<strong>OVERDUE CHECK-IN!</strong> Sentry with card ID: " +
-          id.toUpperCase() +
-          " expected at checkpoint " +
-          chk +
-          " at " +
-          time +
-          ".";
+        alertMessage.innerHTML = message;
 
         // Add the alert message to the top of the main element
         var main = document.getElementsByTagName("main")[0];
         main.insertBefore(alertMessage, main.firstChild);
       };
 
-      socket.on("overdue-scan", (data) => {
-        show_overdue_scan(data.id, data.checkpoint, data.time);
+      socket.on("alert-msgs", (data) => {
+        show_overdue_scan(data.alert_level, data.message);
       });
     </script>
   </body>

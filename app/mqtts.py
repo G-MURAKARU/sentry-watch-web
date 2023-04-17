@@ -1,7 +1,7 @@
 # SUBSCRIBE:
 
 # topic(s) to receive when a scan is overdue, for each checkpoint A, B, C, D
-CHKS_OVERDUE = "sentry-platform/checkpoints/+/overdue-scan"
+CHKS_OVERDUE = "sentry-platform/checkpoints/overdue-scan"
 
 # topic to receive a scan to validate
 SENTRY_SCAN_INFO = "sentry-platform/checkpoints/sentry-scan-info"
@@ -23,17 +23,5 @@ SHIFT_ON_OFF = "sentry-platform/backend-server/shift-status"
 # topic to publish alarm/no alarm
 ALARM = "sentry-platform/backend-server/alarm"
 
-# CONNECTION FLAGS
-
-# web app connected to broker
-APP_CONNECTED = False
-# circuit handler connected to broker
-HANDLER_CONNECTED = False
-# checkpoint A connected to broker
-CHK_A_CONNECTED = False
-# checkpoint B connected to broker
-CHK_B_CONNECTED = False
-# checkpoint C connected to broker
-CHK_C_CONNECTED = False
-# checkpoint D connected to broker
-CHK_D_CONNECTED = False
+# topic to send the generated sentry circuit to the circuit handler
+MONITOR_SENTRY_CIRCUIT = "sentry-platform/backend-server/sentry-circuit"

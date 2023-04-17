@@ -21,14 +21,15 @@ checkpoints = {
 
 # path duration dictionary, maps a path to how long it takes to patrol it in seconds
 durations = {
-    (A, B): 600,
-    (B, C): 900,
-    (C, D): 1200,
-    (D, A): 1500,
+    (A, B): 90,
+    (B, C): 90,
+    (C, D): 90,
+    (D, A): 90,
 }
 
 # check-in window - x seconds before and after the set check-in time within which a scan is considered valid
-CHECK_IN_WINDOW = 120
+CHECK_IN_WINDOW = 30
+
 
 # route generation algorithm, will loop repeatedly until a valid route is generated
 # criteria for a valid route:
@@ -84,7 +85,7 @@ def generate_circuit(
 ):
     # necessary epoch times to evaluate - start of shift and end of shift
     # combines sent date and sent time
-    shift_start: int = datetime.timestamp(datetime.combine(start_date, start_time))
+    shift_start: int = int(datetime.timestamp(datetime.combine(start_date, start_time)))
     shift_dur: int = (shift_dur_hour * 60 * 60) + (shift_dur_min * 60)
     shift_end: int = shift_start + shift_dur
 
@@ -208,8 +209,8 @@ def update_circuit(circuits: list[dict], scan_info: dict):
                     scan_info["sentry-id"] == route["id"]
                     and scan_info["checkpoint"] == route["checkpoint"]
                     and scan_info["scan-time"]
-                    in range(route["time"] - CHECK_IN_WINDOW, route["time"] + CHECK_IN_WINDOW)
+                    in range(route["time"] - CHECK_IN_WINDOW, route["time"] + (CHECK_IN_WINDOW + 1))
                 ):
                     route["checked"] = True
-                break
-            break
+                    break
+        break

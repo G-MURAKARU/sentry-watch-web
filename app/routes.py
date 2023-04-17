@@ -18,7 +18,15 @@ from .forms import (
 )
 
 from .models import Card, Sentry, Shift, Supervisor
-from .mqtts import ALARM, ALERTS, CHKS_OVERDUE, CONNECTED, DONE, SHIFT_ON_OFF
+from .mqtts import (
+    ALARM,
+    ALERTS,
+    CHKS_OVERDUE,
+    CONNECTED,
+    DONE,
+    SHIFT_ON_OFF,
+    MONITOR_SENTRY_CIRCUIT,
+)
 
 # flag indicating whether the shift is ongoing or not
 SHIFT_STATUS = False
@@ -58,6 +66,39 @@ CHK_B_CONNECTED = False
 CHK_C_CONNECTED = False
 # checkpoint D connected to broker
 CHK_D_CONNECTED = False
+
+
+# UTILITY FUNCTIONS FOR THE FRONTEND
+
+
+@app.template_filter("readable")
+def derive_date_time(epoch: int):
+    """
+    converts an epoch timestamp into a readable format with both date and time
+    """
+
+    return datetime.fromtimestamp(epoch).strftime("%d/%m/%Y, %H:%M:%S")
+
+
+@app.template_filter("readable_day")
+def derive_date(epoch: int):
+    """
+    converts an epoch timestamp into a readable format with just the date
+    """
+
+    return datetime.fromtimestamp(epoch).strftime("%d/%m/%Y")
+
+
+@app.template_filter("readable_time")
+def derive_time(epoch: int):
+    """
+    converts an epoch timestamp into a readable format with just the time
+    """
+
+    return datetime.fromtimestamp(epoch).strftime("%H:%M:%S")
+
+
+# WEB APP ROUTES
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -160,33 +201,6 @@ def create_route():
     return render_template("generate-route.html", title="Generate Route", form=form)
 
 
-@app.template_filter("readable")
-def derive_date_time(epoch: int):
-    """
-    converts an epoch timestamp into a readable format with both date and time
-    """
-
-    return datetime.fromtimestamp(epoch).strftime("%d/%m/%Y, %H:%M:%S")
-
-
-@app.template_filter("readable_day")
-def derive_date(epoch: int):
-    """
-    converts an epoch timestamp into a readable format with just the date
-    """
-
-    return datetime.fromtimestamp(epoch).strftime("%d/%m/%Y")
-
-
-@app.template_filter("readable_time")
-def derive_time(epoch: int):
-    """
-    converts an epoch timestamp into a readable format with just the time
-    """
-
-    return datetime.fromtimestamp(epoch).strftime("%H:%M:%S")
-
-
 @app.route("/circuit/view")
 @login_required  # ensures that supervisor is logged in to access
 def view_current_route():
@@ -204,6 +218,91 @@ def view_current_route():
         end=END,
         completed=CIRCUIT_COMPLETED,
     )
+
+
+@app.route("/circuit/save", methods=["GET", "POST"])
+@login_required  # ensures that supervisor is logged in to access
+def save_current_circuit():
+    """
+    saves the current state of the circuit to the database, triggered by `Save Circuit` button on view current route page
+    """
+
+    circuit = Shift.query.get_or_404(CURRENT_CIRCUIT)
+    circuit.circuit = SENTRY_CIRCUIT
+    db.session.commit()
+    flash("Current circuit saved.", "success")
+    return redirect(url_for("view_current_route"))
+
+
+@app.route("/circuit/select", methods=["GET", "POST"])
+@login_required  # ensures that supervisor is logged in to access
+def select_circuit():
+    """
+    handles the logic for webpage displaying interface to select a circuit to monitor
+    """
+
+    form = CircuitSelectionForm()
+
+    if form.validate_on_submit():
+        # set all relevant information to the defined global variables for accessibility in different functions
+        circuit = form.circuit.data
+
+        global SHIFT_STATUS
+        SHIFT_STATUS = True
+        global CURRENT_CIRCUIT
+        CURRENT_CIRCUIT = circuit.id
+        global SENTRY_CIRCUIT
+        SENTRY_CIRCUIT = circuit.circuit
+        global PATHS
+        PATHS = circuit.path_freqs
+        global START
+        START = circuit.shift_start
+        global END
+        END = circuit.shift_end
+        global CIRCUIT_COMPLETED
+        CIRCUIT_COMPLETED = circuit.completed
+        global ALARMS
+        ALARMS = circuit.alarms
+
+        # publish to circuit handler and checkpoints that shift is now being monitored
+        mqtt.publish(topic=SHIFT_ON_OFF, payload="ON", qos=2)
+
+        # send(publish) the current circuit being monitored to the circuit handler
+        mqtt.publish(topic=MONITOR_SENTRY_CIRCUIT, payload=json.dumps(SENTRY_CIRCUIT), qos=2)
+
+        flash("Shift set!", "success")
+        return redirect(url_for("view_current_route"))
+
+    return render_template(
+        "select-circuit.html",
+        title="Select Circuit",
+        form=form,
+    )
+
+
+@app.route("/circuit/deselect")
+@login_required  # ensures that supervisor is logged in to access
+def deselect_circuit():
+    """
+    clears the selected circuit from monitoring by clearing global variables
+    """
+
+    global SHIFT_STATUS
+    SHIFT_STATUS = False
+    global CURRENT_CIRCUIT
+    CURRENT_CIRCUIT = None
+    global SENTRY_CIRCUIT
+    SENTRY_CIRCUIT = None
+    global START
+    START = 0
+    global END
+    END = 0
+
+    # publish to circuit handler and checkpoints that shift is no longer being monitored
+    mqtt.publish(topic=SHIFT_ON_OFF, payload="OFF", qos=2)
+
+    flash("Shift Deselected.", "info")
+    return redirect(url_for("select_circuit"))
 
 
 @app.route("/circuit/logs")
@@ -240,112 +339,6 @@ def view_one_circuit(shift_id):
     )
 
 
-@app.route("/sentries/view")
-@login_required  # ensures that supervisor is logged in to access
-def view_all_sentries():
-    """
-    renders the webpage for viewing all registered sentries
-    """
-
-    # query all registered sentries from the database
-    sentries = Sentry.query.all()
-    return render_template("view-all-sentries.html", sentries=sentries)
-
-
-@app.route("/cards/view")
-@login_required  # ensures that supervisor is logged in to access
-def view_all_cards():
-    """
-    renders the webpage for viewing all registered RFID cards
-    """
-
-    # query all registered RFID cards from the database
-    cards = Card.query.all()
-    return render_template("view-all-cards.html", cards=cards)
-
-
-@app.route("/circuit/select", methods=["GET", "POST"])
-@login_required  # ensures that supervisor is logged in to access
-def select_circuit():
-    """
-    handles the logic for webpage displaying interface to select a circuit to monitor
-    """
-
-    form = CircuitSelectionForm()
-
-    if form.validate_on_submit():
-        # set all relevant information to the defined global variables for accessibility in different functions
-        circuit = form.circuit.data
-
-        global SHIFT_STATUS
-        SHIFT_STATUS = True
-        global CURRENT_CIRCUIT
-        CURRENT_CIRCUIT = circuit.id
-        global SENTRY_CIRCUIT
-        SENTRY_CIRCUIT = circuit.circuit
-        global PATHS
-        PATHS = circuit.path_freqs
-        global START
-        START = circuit.shift_start
-        global END
-        END = circuit.shift_end
-        global CIRCUIT_COMPLETED
-        CIRCUIT_COMPLETED = circuit.completed
-        global ALARMS
-        ALARMS = circuit.alarms
-
-        # publish to circuit handler and checkpoints that shift is now being monitored
-        mqtt.publish(topic=SHIFT_ON_OFF, payload="ON")
-
-        flash("Shift set!", "success")
-        return redirect(url_for("view_current_route"))
-
-    return render_template(
-        "select-circuit.html",
-        title="Select Circuit",
-        form=form,
-    )
-
-
-@app.route("/circuit/save", methods=["GET", "POST"])
-@login_required  # ensures that supervisor is logged in to access
-def save_current_circuit():
-    """
-    saves the current state of the circuit to the database, triggered by `Save Circuit` button on view current route page
-    """
-
-    circuit = Shift.query.get_or_404(CURRENT_CIRCUIT)
-    circuit.circuit = SENTRY_CIRCUIT
-    db.session.commit()
-    flash("Current circuit saved.", "success")
-    return redirect(url_for("view_current_route"))
-
-
-@app.route("/circuit/deselect")
-@login_required  # ensures that supervisor is logged in to access
-def deselect_circuit():
-    """
-    clears the selected circuit from monitoring by clearing global variables
-    """
-
-    global SHIFT_STATUS
-    SHIFT_STATUS = False
-    global CURRENT_CIRCUIT
-    CURRENT_CIRCUIT = None
-    global SENTRY_CIRCUIT
-    SENTRY_CIRCUIT = None
-    global START
-    START = 0
-    global END
-    END = 0
-
-    # publish to circuit handler and checkpoints that shift is no longer being monitored
-    mqtt.publish(topic=SHIFT_ON_OFF, payload="OFF")
-
-    flash("Shift Deselected.", "info")
-    return redirect(url_for("select_circuit"))
-
-
 @app.route("/circuit/logs/<int:shift_id>/delete", methods=["POST"])
 @login_required  # ensures that supervisor is logged in to access
 def delete_circuit(shift_id):
@@ -358,6 +351,18 @@ def delete_circuit(shift_id):
     db.session.commit()
     flash("Shift Deleted.", "danger")
     return redirect(url_for("view_all_circuits"))
+
+
+@app.route("/sentries/view")
+@login_required  # ensures that supervisor is logged in to access
+def view_all_sentries():
+    """
+    renders the webpage for viewing all registered sentries
+    """
+
+    # query all registered sentries from the database
+    sentries = Sentry.query.all()
+    return render_template("view-all-sentries.html", sentries=sentries)
 
 
 @app.route("/sentries/register", methods=["GET", "POST"])
@@ -416,6 +421,32 @@ def update_sentry(sentry_id):
     )
 
 
+@app.route("/sentries/view/<int:sentry_id>/delete", methods=["POST"])
+@login_required  # ensures that supervisor is logged in to access
+def delete_sentry(sentry_id):
+    """
+    deletes a saved sentry from the database
+    """
+
+    sentry = Sentry.query.get_or_404(sentry_id)
+    db.session.delete(sentry)
+    db.session.commit()
+    flash("Sentry Deleted.", "danger")
+    return redirect(url_for("view_all_sentries"))
+
+
+@app.route("/cards/view")
+@login_required  # ensures that supervisor is logged in to access
+def view_all_cards():
+    """
+    renders the webpage for viewing all registered RFID cards
+    """
+
+    # query all registered RFID cards from the database
+    cards = Card.query.all()
+    return render_template("view-all-cards.html", cards=cards)
+
+
 @app.route("/cards/register", methods=["GET", "POST"])
 @login_required  # ensures that supervisor is logged in to access
 def register_card():
@@ -468,32 +499,6 @@ def update_card(card_id):
     )
 
 
-@app.route("/logout")
-@login_required  # ensures that supervisor is logged in to access
-def logout():
-    """
-    logs out the supervisor from the web app
-    """
-
-    logout_user()
-    flash("Logged out.", "info")
-    return redirect(url_for("home"))
-
-
-@app.route("/sentries/view/<int:sentry_id>/delete", methods=["POST"])
-@login_required  # ensures that supervisor is logged in to access
-def delete_sentry(sentry_id):
-    """
-    deletes a saved sentry from the database
-    """
-
-    sentry = Sentry.query.get_or_404(sentry_id)
-    db.session.delete(sentry)
-    db.session.commit()
-    flash("Sentry Deleted.", "danger")
-    return redirect(url_for("view_all_sentries"))
-
-
 @app.route("/cards/view/<int:card_id>/delete", methods=["POST"])
 @login_required  # ensures that supervisor is logged in to access
 def delete_card(card_id):
@@ -508,6 +513,18 @@ def delete_card(card_id):
     return redirect(url_for("view_all_cards"))
 
 
+@app.route("/logout")
+@login_required  # ensures that supervisor is logged in to access
+def logout():
+    """
+    logs out the supervisor from the web app
+    """
+
+    logout_user()
+    flash("Logged out.", "info")
+    return redirect(url_for("home"))
+
+
 @mqtt.on_connect()
 def on_mqtt_connect(client, userdata, flags, rc):
     """
@@ -516,11 +533,18 @@ def on_mqtt_connect(client, userdata, flags, rc):
 
     global APP_CONNECTED
 
-    # rc = return code (CONNACK). on successful connection, rc = 0
+    # rc = return code (CONNACK). on successful connection, rc = 0; subscribe to everything
     if rc == 0:
         APP_CONNECTED = True
         for topic in [CHKS_OVERDUE, CONNECTED, ALERTS, DONE]:
             mqtt.subscribe(topic=topic, qos=2)
+
+
+@mqtt.on_disconnect()
+def on_mqtt_disconnect():
+    print("not connected")
+    global APP_CONNECTED
+    APP_CONNECTED = False
 
 
 @mqtt.on_message()
@@ -528,6 +552,9 @@ def on_mqtt_message(client, userdata, message):
     """
     callback event handler, called when a message is published on any subscribed topic
     """
+
+    global ALARM_TRIGGERED
+    global ALARMS
 
     topic = message.topic
 
@@ -562,7 +589,8 @@ def on_mqtt_message(client, userdata, message):
                 global CHK_D_CONNECTED
                 CHK_D_CONNECTED = bool(connected)
 
-    elif topic.split("/")[-1] == "overdue-scan":
+    # any topic ending with 'overdue-scan' e.g. "sentry-platform/checkpoints/A/overdue-scan"
+    elif topic == CHKS_OVERDUE:
         payload: dict = json.loads(message.payload)
 
         # expected payload (JSON string) of the form:
@@ -586,9 +614,7 @@ def on_mqtt_message(client, userdata, message):
         message = f"<strong>OVERDUE CHECK-IN!</strong> Sentry with card ID: {id.upper()} expected at checkpoint {chk} at {time}."
 
         # set global alarm triggered flag
-        global ALARM_TRIGGERED
         ALARM_TRIGGERED = True
-        global ALARMS
         ALARMS.append(datetime.now().strftime("%H:%M:%S"))
 
         # publish "ON" to raise alarm topic
@@ -604,9 +630,13 @@ def on_mqtt_message(client, userdata, message):
         # {
         #   valid: valid scan or not (bool)
         #   reason: empty if valid, reason for invalid if invalid
+        #   checkpoint: checkpoint ID at which the sentry has checked in
+        #   sentry-id: ID of the card assigned to that sentry
+        #   scan-time: time at which the sentry has scanned
         # }
 
-        valid, reason, id, chk, time = list(payload.values())
+        valid, reason, chk, id, time = list(payload.values())
+        time = datetime.fromtimestamp(time).strftime("%H:%M:%S")
 
         if valid:
             # remove the 'valid' and 'reason' keys from the payload dict, then send to be updated
@@ -627,15 +657,14 @@ def on_mqtt_message(client, userdata, message):
             # else, show alert message
             if reason == "card not on duty":
                 # query all registered RFID cards from the database
+                app.app_context().push()
                 cards = Card.query.all()
                 tag = "UNKNOWN CARD" if id not in cards else "STOLEN CARD"
             else:
                 tag = reason.upper()
 
             # raise alarm
-            global ALARM_TRIGGERED
             ALARM_TRIGGERED = True
-            global ALARMS
             ALARMS.append(datetime.now().strftime("%H:%M:%S"))
 
             mqtt.publish(topic=ALARM, payload="ON", qos=2)
@@ -651,7 +680,7 @@ def on_mqtt_message(client, userdata, message):
         SHIFT_STATUS = False
 
         # send shift over message to clients
-        mqtt.publish(topic=SHIFT_ON_OFF, payload="OFF")
+        mqtt.publish(topic=SHIFT_ON_OFF, payload="OFF", qos=2)
 
         # send message to frontend
         message = "<strong>CIRCUIT COMPLETE!</strong> Save and exit."

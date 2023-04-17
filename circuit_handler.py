@@ -3,10 +3,20 @@ import time
 from collections import deque
 from datetime import datetime
 from operator import itemgetter
+import threading
 
 import paho.mqtt.client as mqtt
 from dotenv import dotenv_values
 
+from app.mqtts import (
+    ALARM,
+    ALERTS,
+    DONE,
+    MONITOR_SENTRY_CIRCUIT,
+    SENTRY_SCAN_INFO,
+    SHIFT_ON_OFF,
+    CHKS_OVERDUE,
+)
 from app.utils import CHECK_IN_WINDOW
 
 # CLIENT CREDENTIALS
@@ -36,34 +46,31 @@ CARDS = None
 # shift ongoing (true) or shift over (false)
 SHIFT_STATUS = False
 
+# alarm on or off flag
+ALARM_ON_OFF = False
+
 # DEFINING MQTT TOPICS
 
 # SUBSCRIBE:
 
-# topic to receive the generated sentry circuit
-SENTRY_CIRCUIT = "sentry-platform/backend-server/sentry-circuit"
-# topic to receive the shift started/over message
-SHIFT_ON_OFF = "sentry-platform/backend-server/shift-status"
-# topic to receive a scan to validate
-SENTRY_SCAN_INFO = "sentry-platform/checkpoints/sentry-scan-info"
+# topic to receive the shift started/over message - SHIFT_ON_OFF
+
+# topic to receive a scan to validate - SENTRY_SCAN_INFO
+
+# topic to receive the generated sentry circuit - MONITOR_SENTRY_CIRCUIT
+
+# topic to receive the alarm signal - ALARM
+
 
 # PUBLISH:
-
-# topics to publish when a scan is overdue, for each checkpoint A, B, C, D
-# NOTE: the backend server will subscribe to all below topics
-CHK_A_OVERDUE = "sentry-platform/checkpoints/A/overdue-scan"
-CHK_B_OVERDUE = "sentry-platform/checkpoints/B/overdue-scan"
-CHK_C_OVERDUE = "sentry-platform/checkpoints/C/overdue-scan"
-CHK_D_OVERDUE = "sentry-platform/checkpoints/D/overdue-scan"
 
 # topic to publish on when connected to the broker
 CONNECTED = "sentry-platform/circuit-handler/connected"
 
-# topic to publish alerts - valid and invalid scans with reasons, if shift done
-ALERTS = "sentry-platform/circuit-handler/alerts"
+# topic to publish when the circuit is exhausted - DONE
 
-# topic to publish when shift is over
-DONE = "sentry-platform/circuit-handler/circuit-complete"
+# topic to publish relevant scan results to the broker - ALERTS
+
 
 # DEFINING UTILITY FUNCTIONS
 
@@ -107,7 +114,7 @@ def validate_scan(check_in: dict):
 
     # check if the card should be on duty
     if check_in["sentry-id"] not in CARDS:
-        # TODO: check if card is in database
+        # check if card is in database
         return {"valid": False, "reason": "card not on duty"} | check_in
 
     valid_id = False
@@ -119,7 +126,7 @@ def validate_scan(check_in: dict):
             check_in["sentry-id"] == item["id"]
             and check_in["checkpoint"] == item["checkpoint"]
             and check_in["scan-time"]
-            in range(item["time"] - CHECK_IN_WINDOW, item["time"] + CHECK_IN_WINDOW)
+            in range(item["time"] - CHECK_IN_WINDOW, item["time"] + (CHECK_IN_WINDOW + 1))
         ):
             item["checked"] = True
             return {"valid": True, "reason": ""} | check_in
@@ -134,7 +141,7 @@ def validate_scan(check_in: dict):
 
         # breaks loop when the subsequent check-in times are in the future
         # either scan was too early or at the wrong checkpoint
-        elif check_in["time"] < (item["time"] - CHECK_IN_WINDOW):
+        elif check_in["scan-time"] < (item["time"] - CHECK_IN_WINDOW):
             return (
                 {"valid": False, "reason": "wrong checkpoint"} | check_in
                 if valid_id and valid_time
@@ -148,11 +155,11 @@ def analyse_checkins(client: mqtt.Client):
     """
 
     # for as long as a shift is ongoing, these checks need be made
-
     while SHIFT_STATUS:
         # if all check-ins have been validated / circuit is exhausted
-        if not CIRCUIT:
-            client.publish(topic=DONE, payload=None)
+        print("checking")
+        if not ALARM_ON_OFF and not CIRCUIT:
+            client.publish(topic=DONE, payload=None, qos=2)
             break
 
         # 1. check the current time
@@ -163,12 +170,11 @@ def analyse_checkins(client: mqtt.Client):
 
         time_now = int(datetime.timestamp(datetime.now()))  # 1
 
-        if time_now > CIRCUIT[0]["time"] + 120:  # 2
+        if time_now > CIRCUIT[0]["time"] + CHECK_IN_WINDOW:  # 2
+            print("analysed")
             current = CIRCUIT.popleft()  # 3
-            if not current["checked"]:  # 4
-                for topic in [CHK_A_OVERDUE, CHK_B_OVERDUE, CHK_C_OVERDUE, CHK_D_OVERDUE]:
-                    client.publish(topic=topic, payload=json.dumps(current))
-                    break
+            if not ALARM_ON_OFF and not current["checked"]:  # 4 -> only checked if alarm is off
+                client.publish(topic=CHKS_OVERDUE, payload=json.dumps(current), qos=2)
 
             # 5. else do nothing
 
@@ -188,19 +194,20 @@ def on_mqtt_connect(client: mqtt.Client, userdata, flags, rc):
     """
 
     if rc == 0:
-        print("Connected!!")
         payload = {"id": CLIENT_ID, "connected": True}
-        client.publish(topic=CONNECTED, payload=json.dumps(payload))
+        client.publish(topic=CONNECTED, payload=json.dumps(payload), qos=2)
 
         # subscribe to relevant topics each time it connects
         # this includes at startup and reconnection
         # list of (topic, QoS) tuples
-        client.subscribe([(SENTRY_CIRCUIT, 2), (SHIFT_ON_OFF, 2), (SENTRY_SCAN_INFO, 2)])
+        client.subscribe(
+            [(MONITOR_SENTRY_CIRCUIT, 2), (SHIFT_ON_OFF, 2), (SENTRY_SCAN_INFO, 2), (ALARM, 2)]
+        )
 
     # using connect_async() will retry connection until established
 
 
-def on_mqtt_message(client, userdata, message):
+def on_mqtt_message(client: mqtt.Client, userdata, message):
     """
     callback event handler, called when a message is published on any subscribed topic
     """
@@ -209,11 +216,12 @@ def on_mqtt_message(client, userdata, message):
 
     global CIRCUIT
     global SHIFT_STATUS
+    global ALARM_ON_OFF
 
     # circuit sent by the broker
-    if topic == SENTRY_CIRCUIT:
+    if topic == MONITOR_SENTRY_CIRCUIT:
         # the sentry circuit will be sent as a JSON bytearray over MQTT
-        payload = json.loads(message.payload)
+        payload: dict = json.loads(message.payload)
 
         # at this point, payload is now a list of Python dictionaries - the generated route
         # the goal is to construct another list of python dictionaries of the form:
@@ -226,16 +234,21 @@ def on_mqtt_message(client, userdata, message):
         # },
         # others...]
 
-        # which is what is stored in the 'route' key of each dict
+        # which is what is stored in the 'route' key of each dict in the 'payload' list
         # this is essentially a list/queue of check-ins
 
         CIRCUIT = generate_checkins(payload)
-        analyse_checkins(client=client)
+
+        # passing the analyser to a separate thread to avoid blocking the main thread
+        # since the analyser has a conditional infinite loop, running it on this thread
+        # will halt all other processes until the loop is terminated, which is undesirable
+        analyser = threading.Thread(target=analyse_checkins, args=[client], daemon=True)
+        analyser.start()
 
     # check-in sent by any checkpoint
     elif topic == SENTRY_SCAN_INFO:
         # the check-in info will be sent as a JSON bytearray over MQTT
-        payload = json.loads(message.payload)
+        payload: dict = json.loads(message.payload)
 
         # at this point, payload is now a Python dictionary of the form
         # {
@@ -248,12 +261,12 @@ def on_mqtt_message(client, userdata, message):
         # if a match is found, the value of the checked key is set to True
         # else send validation result to web app
 
-        validation_result = validate_scan(payload)
-        client.publish(topic=ALERTS, payload=json.dumps(validation_result))
+        validation_result = validate_scan(check_in=payload)
+        client.publish(topic=ALERTS, payload=json.dumps(validation_result), qos=2)
 
     # checker for shift status message
     elif topic == SHIFT_ON_OFF:
-        payload = message.payload.decode("utf-8")
+        payload: str = message.payload.decode("utf-8")
 
         # if shift is on, set shift_status to active(True)
         # if not, set shift status to inactive(False) and clear the check-ins being analysed
@@ -268,9 +281,24 @@ def on_mqtt_message(client, userdata, message):
         elif payload == "ON":
             SHIFT_STATUS = True
 
+    # checker for alarm signal
+    elif topic == ALARM:
+        payload: str = message.payload.decode("utf-8")
 
-def on_mqtt_disconnect():
+        if payload == "ON":
+            ALARM_ON_OFF = True
+            print("alarm triggered")
+        elif payload == "OFF":
+            ALARM_ON_OFF = False
+            print("alarm silenced")
+
+
+def on_mqtt_disconnect(client: mqtt.Client, userdata, rc):
     print("disconnected")
+
+
+def on_mqtt_log(client, userdata, level, buf):
+    print("log:", buf)
 
 
 def launch_circuit_handler():
@@ -278,15 +306,16 @@ def launch_circuit_handler():
     handler = mqtt.Client(client_id=CLIENT_ID, clean_session=True, reconnect_on_failure=True)
     # configure client with broker credentials
     handler.username_pw_set(username=MQTT_UNAME, password=MQTT_PASS)
-    # set LWT message
+    # set LWT message, sent on unprecedented disconnect
     lwt = {"id": CLIENT_ID, "connected": False}
     handler.will_set(topic=CONNECTED, payload=json.dumps(lwt))
     # attach defined event callback functions to created client
     handler.on_connect = on_mqtt_connect
     handler.on_message = on_mqtt_message
     handler.on_disconnect = on_mqtt_disconnect
+    handler.on_log = on_mqtt_log
     # connect to broker asynchronously
-    time.sleep(5)  # wait for 5 seconds after web app launch to connect
+    time.sleep(2)  # wait for 5 seconds after web app launch to connect
     handler.connect_async(host=MQTT_HOST, keepalive=3600)
     # start listening loop on a background thread
     handler.loop_start()

@@ -2,17 +2,6 @@
 
 <!-- from Bootstrap website, jumbotron examples -->
 <div class="container my-5">
-  {% if current_user.is_authenticated and alarm_triggered %}
-  <div class="text-center">
-    <button
-      type="button"
-      class="btn btn-danger rounded-pill"
-      onclick="silence_alarm();"
-    >
-      Silence Alarm
-    </button>
-  </div>
-  {% endif %}
   <div class="p-5 text-center bg-body-tertiary rounded-3">
     <svg
       class="bi mt-4 mb-3"
@@ -36,29 +25,29 @@
     </p>
     {% if current_user.is_authenticated %}
     <div class="row">
-      <div class="col-md-8">
-        <div class="d-inline-flex gap-2 mb-5">
+      <div class="col-md-6">
+        <div class="d-flex flex-column gap-2 mb-5">
           <a
-            class="d-inline-flex align-items-center btn btn-primary btn-lg px-4 rounded-pill"
+            class="align-items-center btn btn-primary btn-lg px-4 my-4 rounded-pill"
             href="{{ url_for('view_current_route') }}"
           >
             View Circuit
           </a>
           <a
-            class="btn btn-outline-secondary btn-lg px-4 rounded-pill"
+            class="btn btn-outline-secondary btn-lg px-4 my-4 rounded-pill"
             href="{{ url_for('register_sentry') }}"
           >
             Register Sentries
           </a>
           <a
-            class="btn btn-outline-secondary btn-lg px-4 rounded-pill"
+            class="btn btn-outline-secondary btn-lg px-4 my-4 rounded-pill"
             href="{{ url_for('register_card') }}"
           >
             Register Cards
           </a>
         </div>
       </div>
-      <div class="col-md-4">{% include 'connection-status.html' %}</div>
+      <div class="col-md-6">{% include 'connection-status.html' %}</div>
     </div>
     {% endif %}
   </div>

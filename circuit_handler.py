@@ -111,9 +111,9 @@ def validate_scan(check_in: dict):
     """
     checks and validates a scan at a checkpoint
     """
-
+    chk, id, time = list(check_in.values())
     # check if the card should be on duty
-    if check_in["sentry-id"] not in CARDS:
+    if id not in CARDS:
         # check if card is in database
         return {"valid": False, "reason": "card not on duty"} | check_in
 
@@ -123,17 +123,16 @@ def validate_scan(check_in: dict):
     for item in CIRCUIT:
         # if scan is valid (right sentry, right checkpoint, right time), return message
         if (
-            check_in["sentry-id"] == item["id"]
-            and check_in["checkpoint"] == item["checkpoint"]
-            and check_in["scan-time"]
-            in range(item["time"] - CHECK_IN_WINDOW, item["time"] + (CHECK_IN_WINDOW + 1))
+            id == item["id"]
+            and chk == item["checkpoint"]
+            and time in range(item["time"] - CHECK_IN_WINDOW, item["time"] + (CHECK_IN_WINDOW + 1))
         ):
             item["checked"] = True
             return {"valid": True, "reason": ""} | check_in
 
         # if an on-duty card is scanned at the right time but the wrong checkpoint
         # sets flags that indicate this as true
-        elif check_in["sentry-id"] == item["id"] and check_in["scan-time"] in range(
+        elif id == item["id"] and time in range(
             item["time"] - CHECK_IN_WINDOW, item["time"] + (CHECK_IN_WINDOW + 1)
         ):
             valid_id = True
@@ -141,7 +140,7 @@ def validate_scan(check_in: dict):
 
         # breaks loop when the subsequent check-in times are in the future
         # either scan was too early or at the wrong checkpoint
-        elif check_in["scan-time"] < (item["time"] - CHECK_IN_WINDOW):
+        elif time < (item["time"] - CHECK_IN_WINDOW):
             return (
                 {"valid": False, "reason": "wrong checkpoint"} | check_in
                 if valid_id and valid_time
@@ -252,7 +251,7 @@ def on_mqtt_message(client: mqtt.Client, userdata, message):
 
         # at this point, payload is now a Python dictionary of the form
         # {
-        #     checkpoint: checkpoint ID at which the sentry has checked in
+        #     checkpoint-id: checkpoint ID at which the sentry has checked in
         #     sentry-id: ID of the card assigned to that sentry
         #     scan-time: time at which the sentry has scanned
         # }
@@ -261,6 +260,7 @@ def on_mqtt_message(client: mqtt.Client, userdata, message):
         # if a match is found, the value of the checked key is set to True
         # else send validation result to web app
 
+        # pass in a list of relevent values: [chk, id, time]
         validation_result = validate_scan(check_in=payload)
         client.publish(topic=ALERTS, payload=json.dumps(validation_result), qos=2)
 

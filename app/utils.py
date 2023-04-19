@@ -6,10 +6,10 @@ from datetime import datetime
 # TIME WILL BE MANIPULATED IN EPOCH TIME - EASIER TO DO MATH (for the check-in timestamps and check-in window)
 
 # variables to store checkpoint IDs
-A: str = "Checkpoint A"
-B: str = "Checkpoint B"
-C: str = "Checkpoint C"
-D: str = "Checkpoint D"
+A: str = "A"
+B: str = "B"
+C: str = "C"
+D: str = "D"
 
 # premises adjacency dictionary i.e. mapping each checkpoint and its immediate neighbours
 checkpoints = {
@@ -83,6 +83,10 @@ def generate_circuit(
     shift_dur_hour: int,
     shift_dur_min: int,
 ):
+    """
+    generates a random sentry circuit/route
+    """
+
     # necessary epoch times to evaluate - start of shift and end of shift
     # combines sent date and sent time
     shift_start: int = int(datetime.timestamp(datetime.combine(start_date, start_time)))
@@ -200,17 +204,27 @@ def generate_circuit(
 
 
 # TODO: create a function for validating a scan
-def update_circuit(circuits: list[dict], scan_info: dict):
+def update_circuit(circuits: list[dict], scan_info: list):
+    """
+    updates the circuit on a valid scan by setting the checked flag for a check-in item to True
+    makes the green dot appear on the frontend
+    """
+
+    found = False
+    chk, id, time = scan_info
+
     for circuit in circuits:
-        if circuit["id"] == scan_info["sentry-id"]:
+        if id == circuit["id"]:
             for route in circuit["route"]:
                 # if scan is valid (right sentry, right checkpoint, right time), return message
                 if (
-                    scan_info["sentry-id"] == route["id"]
-                    and scan_info["checkpoint"] == route["checkpoint"]
-                    and scan_info["scan-time"]
+                    id == route["id"]
+                    and chk == route["checkpoint"]
+                    and time
                     in range(route["time"] - CHECK_IN_WINDOW, route["time"] + (CHECK_IN_WINDOW + 1))
                 ):
                     route["checked"] = True
+                    found = True
                     break
-        break
+        if found:
+            break

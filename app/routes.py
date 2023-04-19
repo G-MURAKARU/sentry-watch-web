@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from contextlib import suppress
 
 from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
@@ -26,6 +27,7 @@ from .mqtts import (
     DONE,
     SHIFT_ON_OFF,
     MONITOR_SENTRY_CIRCUIT,
+    OUTSIDE_SHIFT_SCAN,
 )
 
 # flag indicating whether the shift is ongoing or not
@@ -47,8 +49,6 @@ END = 0
 ALARMS = None
 # flag indicating whether the alarm has been raised or not
 ALARM_TRIGGERED = False
-# stores info of the current sentry to be scanned
-CURRENT_SCANNED_SENTRY = None
 
 # CONNECTION FLAGS
 # these will display connected (green) or disconnected (red) on the homepage
@@ -265,7 +265,9 @@ def select_circuit():
         ALARMS = circuit.alarms
 
         # publish to circuit handler and checkpoints that shift is now being monitored
-        mqtt.publish(topic=SHIFT_ON_OFF, payload="ON", qos=2)
+        # set the retain flag so if a client disconnects, they will 'automatically' receive
+        # the last sent message to this topic when they reconnect
+        mqtt.publish(topic=SHIFT_ON_OFF, payload="ON", qos=2, retain=True)
 
         # send(publish) the current circuit being monitored to the circuit handler
         mqtt.publish(topic=MONITOR_SENTRY_CIRCUIT, payload=json.dumps(SENTRY_CIRCUIT), qos=2)
@@ -299,7 +301,9 @@ def deselect_circuit():
     END = 0
 
     # publish to circuit handler and checkpoints that shift is no longer being monitored
-    mqtt.publish(topic=SHIFT_ON_OFF, payload="OFF", qos=2)
+    # set the retain flag so if a client disconnects, they will 'automatically' receive
+    # the last sent message to this topic when they reconnect
+    mqtt.publish(topic=SHIFT_ON_OFF, payload="OFF", qos=2, retain=True)
 
     flash("Shift Deselected.", "info")
     return redirect(url_for("select_circuit"))
@@ -378,7 +382,7 @@ def register_sentry():
         # create sentry object to save to DB then save
         sentry = Sentry(
             national_id=form.national_id.data,
-            full_name=form.full_name.data,
+            full_name=form.full_name.data.capitalize(),
             phone_no=form.phone_no.data,
         )
         db.session.add(sentry)
@@ -458,7 +462,7 @@ def register_card():
 
     if form.validate_on_submit():
         # create card object to save to DB then save
-        card = Card(rfid_id=form.card_id.data, alias=form.alias.data)
+        card = Card(rfid_id=form.rfid_id.data.lower(), alias=form.alias.data)
         db.session.add(card)
         db.session.commit()
         flash("Card registered successfully.", "success")
@@ -536,7 +540,7 @@ def on_mqtt_connect(client, userdata, flags, rc):
     # rc = return code (CONNACK). on successful connection, rc = 0; subscribe to everything
     if rc == 0:
         APP_CONNECTED = True
-        for topic in [CHKS_OVERDUE, CONNECTED, ALERTS, DONE]:
+        for topic in [CHKS_OVERDUE, CONNECTED, ALERTS, DONE, OUTSIDE_SHIFT_SCAN]:
             mqtt.subscribe(topic=topic, qos=2)
 
 
@@ -560,36 +564,41 @@ def on_mqtt_message(client, userdata, message):
 
     # any topic ending with 'connected' e.g. "sentry-platform/checkpoints/connected"
     if topic.split("/")[-1] == "connected":
-        payload: dict = json.loads(message.payload)
+        print(topic)
+        print(message.payload)
 
-        # expected payload (JSON string) of the form
-        # {
-        #     id: client identifier
-        #     connected: true if connected, false id disconnected
-        # }
+        # to avoid the app crashing when trying to decode garbage payloads
+        with suppress(UnicodeDecodeError):
+            payload: dict = json.loads(message.payload)
 
-        # goal is to display green if connected, red if disconnected in CONNECTION STATUS area
+            # expected payload (JSON string) of the form
+            # {
+            #     id: client identifier
+            #     connected: true if connected, false id disconnected
+            # }
 
-        client, connected = list(payload.values())
+            # goal is to display green if connected, red if disconnected in CONNECTION STATUS area
 
-        match client:
-            case "circuit-handler":
-                global HANDLER_CONNECTED
-                HANDLER_CONNECTED = bool(connected)
-            case "checkpoint-A":
-                global CHK_A_CONNECTED
-                CHK_A_CONNECTED = bool(connected)
-            case "checkpoint-B":
-                global CHK_B_CONNECTED
-                CHK_B_CONNECTED = bool(connected)
-            case "checkpoint-C":
-                global CHK_C_CONNECTED
-                CHK_C_CONNECTED = bool(connected)
-            case "checkpoint-D":
-                global CHK_D_CONNECTED
-                CHK_D_CONNECTED = bool(connected)
+            client, connected = list(payload.values())
 
-    # any topic ending with 'overdue-scan' e.g. "sentry-platform/checkpoints/A/overdue-scan"
+            match client:
+                case "circuit-handler":
+                    global HANDLER_CONNECTED
+                    HANDLER_CONNECTED = bool(connected)
+                case "checkpoint-A":
+                    global CHK_A_CONNECTED
+                    CHK_A_CONNECTED = bool(connected)
+                case "checkpoint-B":
+                    global CHK_B_CONNECTED
+                    CHK_B_CONNECTED = bool(connected)
+                case "checkpoint-C":
+                    global CHK_C_CONNECTED
+                    CHK_C_CONNECTED = bool(connected)
+                case "checkpoint-D":
+                    global CHK_D_CONNECTED
+                    CHK_D_CONNECTED = bool(connected)
+
+    # alert topic if a scan is overdue
     elif topic == CHKS_OVERDUE:
         payload: dict = json.loads(message.payload)
 
@@ -637,17 +646,20 @@ def on_mqtt_message(client, userdata, message):
 
         valid, reason, chk, id, time = list(payload.values())
         time = datetime.fromtimestamp(time).strftime("%H:%M:%S")
+        chk_publish_topic = f"sentry-platform/checkpoints/{chk}/response"
 
         if valid:
             # remove the 'valid' and 'reason' keys from the payload dict, then send to be updated
-            # i.e pick last 3 (indices 2, 3 and 4)
-            scan_info = dict(list(payload.items())[2:])
+            # i.e pick last 3 (indices 2, 3 and 4 -> chk, id and time)
+            scan_info = list(payload.values())[2:]
             utils.update_circuit(circuits=SENTRY_CIRCUIT, scan_info=scan_info)
 
             message = f"<strong>SUCCESSFUL CHECK-IN!</strong> Sentry with card ID: {id.upper()} checked in at checkpoint {chk} at {time}."
 
             # send the message to the frontend
             socketio.emit("alert-msgs", data={"alert_level": "alert-success", "message": message})
+            # and to the checkpoint
+            mqtt.publish(topic=chk_publish_topic, payload=1, qos=2)
 
         else:
             # if card was not on duty, check if card is in database
@@ -659,6 +671,11 @@ def on_mqtt_message(client, userdata, message):
                 # query all registered RFID cards from the database
                 app.app_context().push()
                 cards = Card.query.all()
+                # obtaining their card IDs
+                cards = [card.rfid_id for card in cards]
+
+                # if card is in database but should not be on duty, assume card is stolen
+                # if not, card is unknown
                 tag = "UNKNOWN CARD" if id not in cards else "STOLEN CARD"
             else:
                 tag = reason.upper()
@@ -667,11 +684,58 @@ def on_mqtt_message(client, userdata, message):
             ALARM_TRIGGERED = True
             ALARMS.append(datetime.now().strftime("%H:%M:%S"))
 
+            # transmit alert codes to the checkpoints relating to different alert reasons
+            match tag:
+                case "UNKNOWN CARD":
+                    code = 2
+                case "STOLEN CARD":
+                    code = 3
+                case "WRONG CHECKPOINT":
+                    code = 4
+                case "WRONG TIME OF SCAN":
+                    code = 5
+
+            # publish alert code to the checkpoints
+            mqtt.publish(topic=chk_publish_topic, payload=code, qos=2)
+            # and trigger alarm
             mqtt.publish(topic=ALARM, payload="ON", qos=2)
 
             # send message to frontend
             message = f"<strong>{tag}!</strong> Sentry with card ID: {id.upper()} checked in at checkpoint {chk} at {time}."
             socketio.emit("alert-msgs", data={"alert_level": "alert-danger", "message": message})
+
+    # alert that there has been a scan when no shift is ongoing
+    elif topic == OUTSIDE_SHIFT_SCAN:
+        # inform supervisor on frontend
+        socketio.emit(
+            "alert-msgs",
+            data={
+                "alert_level": "alert-danger",
+                "message": "<strong>SCAN DETECTED OUTSIDE SHIFT PERIOD!</strong>",
+            },
+        )
+
+        # retrieve the scanned card's info transferred for identification
+        payload: dict = json.loads(message.payload)
+        chk, id, time = list(payload.values())
+        time = datetime.fromtimestamp(time).strftime("%H:%M:%S")
+
+        # obtain all saved cards
+        app.app_context().push()
+        cards = Card.query.all()
+        # obtaining their card IDs
+        cards = [card.rfid_id for card in cards]
+
+        # assume card is either unknown (if not in DB) or stolen (if in DB)
+        tag = "UNKNOWN CARD" if id not in cards else "STOLEN CARD"
+
+        # raise alarm
+        ALARM_TRIGGERED = True
+        mqtt.publish(topic=ALARM, payload="ON", qos=2)
+
+        # send message to frontend
+        message = f"<strong>{tag}!</strong> Sentry with card ID: {id.upper()} checked in at checkpoint {chk} at {time}."
+        socketio.emit("alert-msgs", data={"alert_level": "alert-danger", "message": message})
 
     elif topic == DONE:
         global CIRCUIT_COMPLETED
@@ -680,7 +744,9 @@ def on_mqtt_message(client, userdata, message):
         SHIFT_STATUS = False
 
         # send shift over message to clients
-        mqtt.publish(topic=SHIFT_ON_OFF, payload="OFF", qos=2)
+        # set the retain flag so if a client disconnects, they will 'automatically' receive
+        # the last sent message to this topic when they reconnect
+        mqtt.publish(topic=SHIFT_ON_OFF, payload="OFF", qos=2, retain=True)
 
         # send message to frontend
         message = "<strong>CIRCUIT COMPLETE!</strong> Save and exit."

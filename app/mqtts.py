@@ -1,7 +1,7 @@
 # SUBSCRIBE:
 
 # topic(s) to receive when a scan is overdue, for each checkpoint A, B, C, D
-CHKS_OVERDUE = "sentry-platform/checkpoints/overdue-scan"
+CHKS_OVERDUE = "sentry-platform/circuit-handler/overdue-scan"
 
 # topic to receive a scan to validate
 SENTRY_SCAN_INFO = "sentry-platform/checkpoints/sentry-scan-info"
@@ -14,6 +14,9 @@ ALERTS = "sentry-platform/circuit-handler/alerts"
 
 # topic to receive message if the shift is done
 DONE = "sentry-platform/circuit-handler/circuit-complete"
+
+# topic to receive message on an outside-of-shift scan
+OUTSIDE_SHIFT_SCAN = "sentry-platform/checkpoints/outside-shift-scan"
 
 # PUBLISH
 

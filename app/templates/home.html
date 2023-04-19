@@ -54,13 +54,5 @@
   {% if not current_user.is_authenticated %} {% include 'login.html' %} {% endif
   %}
 </div>
-
 <div class="b-example-divider"></div>
-<script type="text/javascript">
-  var socket = io.connect("http://localhost:5000");
-
-  const silence_alarm = () => {
-    socket.emit("silence-alarm");
-  };
-</script>
 {% endblock content %}

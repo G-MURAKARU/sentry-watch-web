@@ -51,7 +51,7 @@
           Silence Alarm
         </button>
       </div>
-      {% endif %} {% block content %} {% endblock content %}
+      {% endif %} {% block content %}{% endblock content %}
     </main>
 
     {% include 'footer.html' %}
@@ -77,7 +77,11 @@
     <script type="text/javascript">
       var socket = io.connect("http://localhost:5000");
 
-      const show_overdue_scan = (alert_level, message) => {
+      const silence_alarm = () => {
+        socket.emit("silence-alarm");
+      };
+
+      const show_alert_message = (alert_level, message) => {
         // Create a new alert message
         var alertMessage = document.createElement("div");
         alertMessage.classList.add(
@@ -95,8 +99,9 @@
         main.insertBefore(alertMessage, main.firstChild);
       };
 
+      // set a socket event to listen to and handle
       socket.on("alert-msgs", (data) => {
-        show_overdue_scan(data.alert_level, data.message);
+        show_alert_message(data.alert_level, data.message);
       });
     </script>
   </body>

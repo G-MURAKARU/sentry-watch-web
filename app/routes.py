@@ -382,7 +382,7 @@ def register_sentry():
         # create sentry object to save to DB then save
         sentry = Sentry(
             national_id=form.national_id.data,
-            full_name=form.full_name.data.capitalize(),
+            full_name=form.full_name.data.title(),
             phone_no=form.phone_no.data,
         )
         db.session.add(sentry)

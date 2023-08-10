@@ -1,7 +1,5 @@
 __pycache__/
 venv/
-instance/
 .DS_Store
 .vscode/
 trial.py
-.env

@@ -58,14 +58,8 @@ ALARM_TRIGGERED = False
 APP_CONNECTED = False
 # circuit handler connected to broker
 HANDLER_CONNECTED = False
-# checkpoint A connected to broker
-CHK_A_CONNECTED = False
-# checkpoint B connected to broker
-CHK_B_CONNECTED = False
-# checkpoint C connected to broker
-CHK_C_CONNECTED = False
-# checkpoint D connected to broker
-CHK_D_CONNECTED = False
+# Checkpoint connection to broker
+CHK_CONNECTED = {}
 
 
 #Database initialization
@@ -118,6 +112,12 @@ with app.app_context():
                 else:
                     checks[i].append_path_out((checks[i + GRID_WIDTH].name, 70))
         db.session.commit()
+
+    # Loading the default checkpoint connection state for the setup checkpoints
+    CHK_CONNECTED = {
+        chkpt.name: False
+        for chkpt in Checkpoint.query.all()
+    }
 
 
 # UTILITY FUNCTIONS FOR THE FRONTEND
@@ -188,10 +188,7 @@ def home():
         form=form,
         app_connected=APP_CONNECTED,
         handler_connected=HANDLER_CONNECTED,
-        chkA_connected=CHK_A_CONNECTED,
-        chkB_connected=CHK_B_CONNECTED,
-        chkC_connected=CHK_C_CONNECTED,
-        chkD_connected=CHK_D_CONNECTED,
+        chk_connected=CHK_CONNECTED,
         alarm_triggered=ALARM_TRIGGERED,
     )
 
@@ -656,18 +653,8 @@ def on_mqtt_message(client, userdata, message):
                 case "circuit-handler":
                     global HANDLER_CONNECTED
                     HANDLER_CONNECTED = bool(connected)
-                case "checkpoint-A":
-                    global CHK_A_CONNECTED
-                    CHK_A_CONNECTED = bool(connected)
-                case "checkpoint-B":
-                    global CHK_B_CONNECTED
-                    CHK_B_CONNECTED = bool(connected)
-                case "checkpoint-C":
-                    global CHK_C_CONNECTED
-                    CHK_C_CONNECTED = bool(connected)
-                case "checkpoint-D":
-                    global CHK_D_CONNECTED
-                    CHK_D_CONNECTED = bool(connected)
+                case _:
+                    CHK_CONNECTED[client] = bool(connected)
 
     # alert topic if a scan is overdue
     elif topic == CHKS_OVERDUE:

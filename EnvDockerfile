@@ -1,38 +1,11 @@
+# # specifying the base Docker image to use, preferably alpine because lightweight
 FROM python:3.11-alpine
+
+# # creating and setting the application's working directory in the image being created
 WORKDIR /usr/src/app
-RUN pip install bcrypt==4.0.1
-RUN pip install bidict==0.22.1
-RUN pip install black==23.3.0
-RUN pip install click==8.1.3
-RUN pip install dnspython==2.3.0
-RUN pip install dominate==2.7.0
-RUN pip install email-validator==1.3.1
-RUN pip install eventlet==0.33.3
-RUN pip install Flask==2.2.3
-RUN pip install Flask-Bcrypt==1.0.1
-RUN pip install Flask-Bootstrap==3.3.7.1
-RUN pip install Flask-Login==0.6.2
-RUN pip install Flask-MQTT==1.1.1
-RUN pip install Flask-SocketIO==5.3.3
-RUN pip install Flask-SQLAlchemy==3.0.3
-RUN pip install Flask-WTF==1.1.1
-RUN pip install greenlet==2.0.2
-RUN pip install idna==3.4
-RUN pip install itsdangerous==2.1.2
-RUN pip install Jinja2==3.1.2
-RUN pip install MarkupSafe==2.1.2
-RUN pip install mypy-extensions==1.0.0
-RUN pip install packaging==23.0
-RUN pip install paho-mqtt==1.6.1
-RUN pip install pathspec==0.11.1
-RUN pip install platformdirs==3.2.0
-RUN pip install python-dotenv==1.0.0
-RUN pip install python-engineio==4.4.0
-RUN pip install python-socketio==5.8.0
-RUN pip install six==1.16.0
-RUN pip install SQLAlchemy==2.0.9
-RUN pip install typing_extensions==4.5.0
-RUN pip install visitor==0.1.3
-RUN pip install Werkzeug==2.2.3
-RUN pip install WTForms==3.0.1
-RUN pip install WTForms-SQLAlchemy==0.3
+
+# # copying the text file containing the app's dependencies into the image
+COPY requirements.txt ./
+
+# # installing (with pip) the app's dependencies in the image using the above file
+RUN pip3 install --no-cache-dir -r requirements.txt

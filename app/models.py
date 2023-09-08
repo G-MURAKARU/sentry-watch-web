@@ -2,7 +2,8 @@ from ast import literal_eval
 from datetime import datetime
 
 from flask_login import UserMixin
-from sqlalchemy import Boolean, Column, Integer, String, Text
+from sqlalchemy import Boolean, Column, Integer, String, Text, ForeignKey, UniqueConstraint
+from sqlalchemy.orm import relationship
 
 from app import db, login_manager
 
@@ -106,3 +107,62 @@ class Supervisor(db.Model, UserMixin):
     id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String(50), unique=True, nullable=False)
     password = Column(String(20), nullable=False)
+
+
+class Checkpoint(db.Model):
+    __tablename__ = "checkpoints"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(50), unique=True, nullable=False)
+
+    patrol_paths_in = relationship(
+        "PatrolPath",
+        foreign_keys="PatrolPath.chkpt_src",
+        #primaryjoin="PatrolPath.chkpt_src == id",
+        backref="src_checkpoint",
+        cascade="all, delete"
+    )
+
+    patrol_paths_out = relationship(
+        "PatrolPath",
+        foreign_keys="PatrolPath.chkpt_dest",
+        #primaryjoin="PatrolPath.chkpt_dest == id",
+        backref="dest_checkpoint",
+        cascade="all, delete"
+    )
+
+    @property
+    def paths_out(self):
+        return [
+            (patrol_path.dest_checkpoint.name, patrol_path.duration)
+            for patrol_path in self.patrol_paths_in
+        ]
+
+    def append_path_out(self, path: tuple[str, int]):
+        dest_checkpoint = Checkpoint.query.filter_by(name=path[0]).first()
+        patrol_path = PatrolPath(chkpt_src=self.id, chkpt_dest=dest_checkpoint.id, duration=path[1])
+        db.session.add(patrol_path)
+
+
+class PatrolPath(db.Model):
+    __tablename__ = "ptrl_paths"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    chkpt_src = Column(Integer, ForeignKey("checkpoints.id"), nullable=False)
+    chkpt_dest = Column(Integer, ForeignKey("checkpoints.id"), nullable=False)
+    duration = Column(Integer, nullable=False)
+
+    # src_checkpoint = relationship(
+    #     "Checkpoint",
+    #     foreign_keys=chkpt_src,
+    #     back_populates="patrol_paths_in"
+    # )
+    # dest_checkpoint = relationship(
+    #     "Checkpoint",
+    #     foreign_keys=chkpt_dest,
+    #     back_populates="patrol_paths_out"
+    # )
+
+    __table_args__ = (
+        UniqueConstraint('chkpt_src', 'chkpt_dest', name='_ptrl_path_uc'),
+    )

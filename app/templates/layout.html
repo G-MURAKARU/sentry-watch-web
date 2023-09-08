@@ -75,7 +75,8 @@
 
     <!-- JS for displaying received MQTT messages -->
     <script type="text/javascript">
-      var socket = io.connect("http://localhost:5000");
+      // var socket = io.connect("http://localhost:5000");
+      var socket = io();
 
       const silence_alarm = () => {
         socket.emit("silence-alarm");

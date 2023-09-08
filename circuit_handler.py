@@ -294,11 +294,11 @@ def on_mqtt_message(client: mqtt.Client, userdata, message):
 
 
 def on_mqtt_disconnect(client: mqtt.Client, userdata, rc):
-    print("disconnected")
+    print("MQTT disconnected")
 
 
 def on_mqtt_log(client, userdata, level, buf):
-    print("log:", buf)
+    print("MQTT log:", buf)
 
 
 def launch_circuit_handler():

@@ -1,3 +1,5 @@
+import sys
+import math
 import copy
 import random
 from collections import Counter
@@ -5,27 +7,6 @@ from datetime import datetime
 
 # TIME WILL BE MANIPULATED IN EPOCH TIME - EASIER TO DO MATH (for the check-in timestamps and check-in window)
 
-# variables to store checkpoint IDs
-A: str = "A"
-B: str = "B"
-C: str = "C"
-D: str = "D"
-
-# premises adjacency dictionary i.e. mapping each checkpoint and its immediate neighbours
-checkpoints = {
-    A: [B, D],
-    B: [A, C],
-    C: [D, B],
-    D: [C, A],
-}
-
-# path duration dictionary, maps a path to how long it takes to patrol it in seconds
-durations = {
-    (A, B): 90,
-    (B, C): 90,
-    (C, D): 90,
-    (D, A): 90,
-}
 
 # check-in window - x seconds before and after the set check-in time within which a scan is considered valid
 CHECK_IN_WINDOW = 30
@@ -34,7 +15,8 @@ CHECK_IN_WINDOW = 30
 # route generation algorithm, will loop repeatedly until a valid route is generated
 # criteria for a valid route:
 # 1. all paths i.e A-B, B-C, C-D and D-A are patrolled
-# 2. the difference in frequency of the most patrolled path and the least patrolled path should not exceed 2
+# 2. the difference in frequency of the most patrolled path and the least
+#     patrolled path should not exceed the sqare root of the path count
 
 # WORKING OF THE ALGORITHM:
 # example route:
@@ -77,7 +59,8 @@ CHECK_IN_WINDOW = 30
 
 
 def generate_circuit(
-    sentries: list[tuple[str]],
+    sentries: list[tuple[str,str,str]],
+    checkpoints: dict[str, list[tuple]],
     start_date: datetime,
     start_time: datetime,
     shift_dur_hour: int,
@@ -86,6 +69,11 @@ def generate_circuit(
     """
     generates a random sentry circuit/route
     """
+
+    # Calculating the total possible paths
+    req_path_count = 0
+    for check_paths in list(checkpoints.values()):
+        req_path_count += len(check_paths)
 
     # necessary epoch times to evaluate - start of shift and end of shift
     # combines sent date and sent time
@@ -116,10 +104,16 @@ def generate_circuit(
 
         ind_routes: list[dict] = []
 
+        # For calculating weights for randomising path to take
+        check_weights = {
+            checkpath: ([sys.maxsize] * len(checkpoints[checkpath]))
+            for checkpath in list(checkpoints.keys())
+        }
+
         # paths list stores each generated patrol path as the full route is generated
         # will be used to count the patrol frequencies for each path
 
-        paths: list[tuple] = []
+        paths: list[tuple[str,str]] = []
 
         for name, alias, card in sentries:
             # routes will be generated one sentry (ID) at a time
@@ -127,7 +121,7 @@ def generate_circuit(
             current_time: int = shift_start
 
             # each route will start at a random checkpoint, and check-in info is stored in routes list
-            starting_checkpoint: str = random.choice([A, B, C, D])
+            starting_checkpoint: str = random.choice(list(checkpoints.keys()))
 
             # individual check-in info is stored at beginning of shift
             # time stored as epoch time
@@ -152,23 +146,13 @@ def generate_circuit(
                 first: str = second or starting_checkpoint
                 # if second is "", assign to start instead
 
-                # pick second at random from immediate neighbours
-                second: str = random.choice(checkpoints[first])
+                # pick second at random from immediate neighbours together with the path duration
+                pick = random.choices(range(len(checkpoints[first])), weights=check_weights[first], k=1)[0]
+                check_weights[first][pick] /= 2
+                second, path_duration = checkpoints[first][pick]
 
                 # pair the two checkpoints to form a path
-                path: tuple = (first, second)
-
-                # obtain the duration to patrol that path
-                path_duration = durations.get(path)
-
-                # if path is in reverse i.e. (B, A) instead of (A, B), it does not exist in the durations dict
-                # the .get() function will return None
-                # if it returns None, reverse the path then search the durations dict again
-
-                # if not None == if not False == if True
-                if not path_duration:
-                    path = tuple(reversed(path))
-                    path_duration = durations.get(path)
+                path: tuple[str,str] = (first, second)
 
                 # update the current time path to reflect the time offset (time taken to patrol generated path)
                 current_time += path_duration
@@ -193,11 +177,11 @@ def generate_circuit(
         # e.g. ( ('Chk A', 'Chk B'), 20 ) -> the path from Chk A to Chk B was patrolled 20 times in total
         path_freqs = Counter(paths).most_common()
 
-        # checking the valid path criteria outlined above,
-        # if valid then break out of 'while True' loop
-        # if not, loop again
-        if len(path_freqs) == 4 and (path_freqs[0][1] - path_freqs[-1][1]) < 3:
-            break
+        # Checking that all paths i.e A-B, B-C, C-D and D-A are patrolled and
+        # Confirming the difference in frequency of the most patrolled path and the least
+        #  patrolled path should not exceed the sqare root of the path count
+        if len(path_freqs) == req_path_count and (path_freqs[0][1] - path_freqs[-1][1]) <= math.sqrt(req_path_count):
+            break   # if valid then break out of 'while True' loop
 
     # info for database storage
     return shift_start, shift_end, path_freqs, ind_routes

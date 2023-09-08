@@ -18,7 +18,7 @@ from .forms import (
     UpdateSentryForm,
 )
 
-from .models import Card, Sentry, Shift, Supervisor
+from .models import Card, Sentry, Shift, Supervisor, Checkpoint
 from .mqtts import (
     ALARM,
     ALERTS,
@@ -66,6 +66,58 @@ CHK_B_CONNECTED = False
 CHK_C_CONNECTED = False
 # checkpoint D connected to broker
 CHK_D_CONNECTED = False
+
+
+#Database initialization
+with app.app_context():
+    db.create_all()
+
+    # To create supervisor login if none exist
+    if (Supervisor.query.count() == 0):
+        new_supervisor = Supervisor(
+            email="supervisor@sentrywatch.com",
+            password=bcrypt.generate_password_hash("Master0Pass").decode("utf-8")
+        )
+        db.session.add(new_supervisor)
+        db.session.commit()
+    # To create Checkpoints if none exist
+    if (Checkpoint.query.count() == 0):
+        checks = [
+            Checkpoint(name="Checkpoint A"),    #0
+            Checkpoint(name="Checkpoint B"),    #1
+            Checkpoint(name="Checkpoint C"),    #2
+            Checkpoint(name="Checkpoint D"),    #3
+            Checkpoint(name="Checkpoint E"),    #4
+            Checkpoint(name="Checkpoint F"),    #5
+            Checkpoint(name="Checkpoint G"),    #6
+            Checkpoint(name="Checkpoint H"),    #7
+            Checkpoint(name="Checkpoint I"),    #8
+        ]
+        db.session.add_all(checks)
+        db.session.commit()
+
+        # Setting a rectangular grid with naming going left-to-right then top-to-bottom
+        GRID_WIDTH = 3
+        for i in range(len(checks)):
+            # Checkpoint leftwards
+            if (i % GRID_WIDTH) > 0:
+                checks[i].append_path_out((checks[i - 1].name, 90))
+            # Checkpoint upwards
+            if i >= GRID_WIDTH:
+                if i < (2 * GRID_WIDTH):    # First vertical is 60 duration
+                    checks[i].append_path_out((checks[i - GRID_WIDTH].name, 60))
+                else:
+                    checks[i].append_path_out((checks[i - GRID_WIDTH].name, 70))
+            # Checkpoint rightwards
+            if (i + 1) < len(checks) and ((i + 1) % GRID_WIDTH) > 0:
+                checks[i].append_path_out((checks[i + 1].name, 90))
+            # Checkpoint downwards
+            if (i + GRID_WIDTH) < len(checks):
+                if i < GRID_WIDTH:    # First vertical is 60 duration
+                    checks[i].append_path_out((checks[i + GRID_WIDTH].name, 60))
+                else:
+                    checks[i].append_path_out((checks[i + GRID_WIDTH].name, 70))
+        db.session.commit()
 
 
 # UTILITY FUNCTIONS FOR THE FRONTEND
@@ -172,9 +224,28 @@ def create_route():
             hours = int(form.shift_dur_hour.data)
             minutes = int(form.shift_dur_min.data)
 
+            # premises adjacency and duration dictionary
+            #  i.e. mapping each checkpoint and its immediate neighbours plus the duration to patrol the path in seconds
+            # checkpts = {
+            #     "A": [("B", 90), ("D", 70)],
+            #     "B": [("A", 90), ("C", 90), ("E", 70)],
+            #     "C": [("B", 90), ("F", 70)],
+            #     "D": [("E", 90), ("A", 70), ("G", 60)],
+            #     "E": [("D", 90), ("F", 90), ("B", 70), ("H", 60)],
+            #     "F": [("E", 90), ("C", 70), ("I", 60)],
+            #     "G": [("H", 90), ("D", 60)],
+            #     "H": [("G", 90), ("I", 90), ("E", 60)],
+            #     "I": [("H", 90), ("F", 60)],
+            # }
+            checkpts = {
+                chkpt.name: chkpt.paths_out
+                for chkpt in Checkpoint.query.all()
+            }
+
             # retrieve start time, end time, path patrol frequencies and full circuit from generate_circuit output
             start, end, paths, circuit = utils.generate_circuit(
                 sentries=assignments,
+                checkpoints=checkpts,
                 start_date=date,
                 start_time=time,
                 shift_dur_hour=hours,

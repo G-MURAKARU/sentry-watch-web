@@ -102,7 +102,7 @@ class Shift(db.Model):
 
 
 class Supervisor(db.Model, UserMixin):
-    ___tablename__ = "supervisors"
+    __tablename__ = "supervisors"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String(50), unique=True, nullable=False)
@@ -118,17 +118,17 @@ class Checkpoint(db.Model):
     patrol_paths_in = relationship(
         "PatrolPath",
         foreign_keys="PatrolPath.chkpt_src",
-        #primaryjoin="PatrolPath.chkpt_src == id",
+        # primaryjoin="PatrolPath.chkpt_src == id",
         backref="src_checkpoint",
-        cascade="all, delete"
+        cascade="all, delete",
     )
 
     patrol_paths_out = relationship(
         "PatrolPath",
         foreign_keys="PatrolPath.chkpt_dest",
-        #primaryjoin="PatrolPath.chkpt_dest == id",
+        # primaryjoin="PatrolPath.chkpt_dest == id",
         backref="dest_checkpoint",
-        cascade="all, delete"
+        cascade="all, delete",
     )
 
     @property
@@ -163,6 +163,4 @@ class PatrolPath(db.Model):
     #     back_populates="patrol_paths_out"
     # )
 
-    __table_args__ = (
-        UniqueConstraint('chkpt_src', 'chkpt_dest', name='_ptrl_path_uc'),
-    )
+    __table_args__ = (UniqueConstraint("chkpt_src", "chkpt_dest", name="_ptrl_path_uc"),)

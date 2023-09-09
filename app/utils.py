@@ -59,7 +59,7 @@ CHECK_IN_WINDOW = 30
 
 
 def generate_circuit(
-    sentries: list[tuple[str,str,str]],
+    sentries: list[tuple[str, str, str]],
     checkpoints: dict[str, list[tuple]],
     start_date: datetime,
     start_time: datetime,
@@ -71,9 +71,7 @@ def generate_circuit(
     """
 
     # Calculating the total possible paths
-    req_path_count = 0
-    for check_paths in list(checkpoints.values()):
-        req_path_count += len(check_paths)
+    req_path_count = sum(len(check_paths) for check_paths in list(checkpoints.values()))
 
     # necessary epoch times to evaluate - start of shift and end of shift
     # combines sent date and sent time
@@ -113,7 +111,7 @@ def generate_circuit(
         # paths list stores each generated patrol path as the full route is generated
         # will be used to count the patrol frequencies for each path
 
-        paths: list[tuple[str,str]] = []
+        paths: list[tuple[str, str]] = []
 
         for name, alias, card in sentries:
             # routes will be generated one sentry (ID) at a time
@@ -147,12 +145,14 @@ def generate_circuit(
                 # if second is "", assign to start instead
 
                 # pick second at random from immediate neighbours together with the path duration
-                pick = random.choices(range(len(checkpoints[first])), weights=check_weights[first], k=1)[0]
+                pick = random.choices(
+                    range(len(checkpoints[first])), weights=check_weights[first], k=1
+                )[0]
                 check_weights[first][pick] /= 2
                 second, path_duration = checkpoints[first][pick]
 
                 # pair the two checkpoints to form a path
-                path: tuple[str,str] = (first, second)
+                path: tuple[str, str] = (first, second)
 
                 # update the current time path to reflect the time offset (time taken to patrol generated path)
                 current_time += path_duration
@@ -173,15 +173,17 @@ def generate_circuit(
             # copy sentry's route info to individual routes (ind_routes) list
             ind_routes.append(copy.deepcopy(route_dict))
 
-        # generates and returns a list of path frequencies from paths list, format: [(path, frequency), ...]
+        # generates and returns a list of path frequencies from paths list in descending order, format: [(path, frequency), ...]
         # e.g. ( ('Chk A', 'Chk B'), 20 ) -> the path from Chk A to Chk B was patrolled 20 times in total
         path_freqs = Counter(paths).most_common()
 
         # Checking that all paths i.e A-B, B-C, C-D and D-A are patrolled and
         # Confirming the difference in frequency of the most patrolled path and the least
         #  patrolled path should not exceed the sqare root of the path count
-        if len(path_freqs) == req_path_count and (path_freqs[0][1] - path_freqs[-1][1]) <= math.sqrt(req_path_count):
-            break   # if valid then break out of 'while True' loop
+        if len(path_freqs) == req_path_count and (
+            path_freqs[0][1] - path_freqs[-1][1]
+        ) <= math.sqrt(req_path_count):
+            break  # if valid then break out of 'while True' loop
 
     # info for database storage
     return shift_start, shift_end, path_freqs, ind_routes

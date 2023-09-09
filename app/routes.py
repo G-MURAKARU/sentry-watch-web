@@ -4,6 +4,7 @@ from contextlib import suppress
 
 from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
+from flask_migrate import migrate
 
 import app.utils as utils
 from app import app, bcrypt, db, mqtt, socketio
@@ -62,62 +63,59 @@ HANDLER_CONNECTED = False
 CHK_CONNECTED = {}
 
 
-#Database initialization
-with app.app_context():
-    db.create_all()
+# Database initialization
+# with app.app_context():
+#     # db.create_all()
 
-    # To create supervisor login if none exist
-    if (Supervisor.query.count() == 0):
-        new_supervisor = Supervisor(
-            email="supervisor@sentrywatch.com",
-            password=bcrypt.generate_password_hash("Master0Pass").decode("utf-8")
-        )
-        db.session.add(new_supervisor)
-        db.session.commit()
-    # To create Checkpoints if none exist
-    if (Checkpoint.query.count() == 0):
-        checks = [
-            Checkpoint(name="Checkpoint A"),    #0
-            Checkpoint(name="Checkpoint B"),    #1
-            Checkpoint(name="Checkpoint C"),    #2
-            Checkpoint(name="Checkpoint D"),    #3
-            Checkpoint(name="Checkpoint E"),    #4
-            Checkpoint(name="Checkpoint F"),    #5
-            Checkpoint(name="Checkpoint G"),    #6
-            Checkpoint(name="Checkpoint H"),    #7
-            Checkpoint(name="Checkpoint I"),    #8
-        ]
-        db.session.add_all(checks)
-        db.session.commit()
+#     # To create supervisor login if none exist
+#     if Supervisor.query.count() == 0:
+#         new_supervisor = Supervisor(
+#             email="supervisor@sentrywatch.com",
+#             password=bcrypt.generate_password_hash("Master0Pass").decode("utf-8"),
+#         )
+#         db.session.add(new_supervisor)
+#         db.session.commit()
+#     # To create Checkpoints if none exist
+#     if Checkpoint.query.count() == 0:
+#         checks = [
+#             Checkpoint(name="Checkpoint A"),  # 0
+#             Checkpoint(name="Checkpoint B"),  # 1
+#             Checkpoint(name="Checkpoint C"),  # 2
+#             Checkpoint(name="Checkpoint D"),  # 3
+#             Checkpoint(name="Checkpoint E"),  # 4
+#             Checkpoint(name="Checkpoint F"),  # 5
+#             Checkpoint(name="Checkpoint G"),  # 6
+#             Checkpoint(name="Checkpoint H"),  # 7
+#             Checkpoint(name="Checkpoint I"),  # 8
+#         ]
+#         db.session.add_all(checks)
+#         db.session.commit()
 
-        # Setting a rectangular grid with naming going left-to-right then top-to-bottom
-        GRID_WIDTH = 3
-        for i in range(len(checks)):
-            # Checkpoint leftwards
-            if (i % GRID_WIDTH) > 0:
-                checks[i].append_path_out((checks[i - 1].name, 90))
-            # Checkpoint upwards
-            if i >= GRID_WIDTH:
-                if i < (2 * GRID_WIDTH):    # First vertical is 60 duration
-                    checks[i].append_path_out((checks[i - GRID_WIDTH].name, 60))
-                else:
-                    checks[i].append_path_out((checks[i - GRID_WIDTH].name, 70))
-            # Checkpoint rightwards
-            if (i + 1) < len(checks) and ((i + 1) % GRID_WIDTH) > 0:
-                checks[i].append_path_out((checks[i + 1].name, 90))
-            # Checkpoint downwards
-            if (i + GRID_WIDTH) < len(checks):
-                if i < GRID_WIDTH:    # First vertical is 60 duration
-                    checks[i].append_path_out((checks[i + GRID_WIDTH].name, 60))
-                else:
-                    checks[i].append_path_out((checks[i + GRID_WIDTH].name, 70))
-        db.session.commit()
+#         # Setting a rectangular grid with naming going left-to-right then top-to-bottom
+#         GRID_WIDTH = 3
+#         for i in range(len(checks)):
+#             # Checkpoint leftwards
+#             if (i % GRID_WIDTH) > 0:
+#                 checks[i].append_path_out((checks[i - 1].name, 90))
+#             # Checkpoint upwards
+#             if i >= GRID_WIDTH:
+#                 if i < (2 * GRID_WIDTH):  # First vertical is 60 duration
+#                     checks[i].append_path_out((checks[i - GRID_WIDTH].name, 60))
+#                 else:
+#                     checks[i].append_path_out((checks[i - GRID_WIDTH].name, 70))
+#             # Checkpoint rightwards
+#             if (i + 1) < len(checks) and ((i + 1) % GRID_WIDTH) > 0:
+#                 checks[i].append_path_out((checks[i + 1].name, 90))
+#             # Checkpoint downwards
+#             if (i + GRID_WIDTH) < len(checks):
+#                 if i < GRID_WIDTH:  # First vertical is 60 duration
+#                     checks[i].append_path_out((checks[i + GRID_WIDTH].name, 60))
+#                 else:
+#                     checks[i].append_path_out((checks[i + GRID_WIDTH].name, 70))
+#         db.session.commit()
 
-    # Loading the default checkpoint connection state for the setup checkpoints
-    CHK_CONNECTED = {
-        chkpt.name: False
-        for chkpt in Checkpoint.query.all()
-    }
+#     # Loading the default checkpoint connection state for the setup checkpoints
+#     CHK_CONNECTED = {chkpt.name: False for chkpt in Checkpoint.query.all()}
 
 
 # UTILITY FUNCTIONS FOR THE FRONTEND
@@ -234,10 +232,7 @@ def create_route():
             #     "H": [("G", 90), ("I", 90), ("E", 60)],
             #     "I": [("H", 90), ("F", 60)],
             # }
-            checkpts = {
-                chkpt.name: chkpt.paths_out
-                for chkpt in Checkpoint.query.all()
-            }
+            checkpts = {chkpt.name: chkpt.paths_out for chkpt in Checkpoint.query.all()}
 
             # retrieve start time, end time, path patrol frequencies and full circuit from generate_circuit output
             start, end, paths, circuit = utils.generate_circuit(

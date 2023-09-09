@@ -6,6 +6,7 @@ from flask_login import LoginManager
 from flask_mqtt import Mqtt
 from flask_socketio import SocketIO
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 
 # from Flask-MQTT docs example
 eventlet.monkey_patch()
@@ -26,6 +27,9 @@ bcrypt = Bcrypt(app)
 mqtt = Mqtt(app=app, connect_async=True)
 # enabling use of WebSockets in the web app for flow of MQTT alert messages from server to client and vice-versa
 socketio = SocketIO(app)
+
+# to enable database migrations using Alembic
+migrate = Migrate(app=app, db=db)
 
 # if not logged in and try to access page that needs authentication, redirect to this route
 login_manager.login_view = "home"

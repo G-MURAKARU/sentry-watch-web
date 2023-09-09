@@ -134,13 +134,12 @@ class Checkpoint(db.Model):
     @property
     def paths_out(self):
         return [
-            (patrol_path.dest_checkpoint.name, patrol_path.duration)
+            (patrol_path.chkpt_dest, patrol_path.duration)
             for patrol_path in self.patrol_paths_in
         ]
 
-    def append_path_out(self, path: tuple[str, int]):
-        dest_checkpoint = Checkpoint.query.filter_by(name=path[0]).first()
-        patrol_path = PatrolPath(chkpt_src=self.id, chkpt_dest=dest_checkpoint.id, duration=path[1])
+    def append_path_out(self, path: tuple[int, int]):
+        patrol_path = PatrolPath(chkpt_src=self.id, chkpt_dest=path[0], duration=path[1])
         db.session.add(patrol_path)
 
 

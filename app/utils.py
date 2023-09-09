@@ -60,7 +60,7 @@ CHECK_IN_WINDOW = 30
 
 def generate_circuit(
     sentries: list[tuple[str, str, str]],
-    checkpoints: dict[str, list[tuple]],
+    checkpoints: dict[int, list[tuple]],
     start_date: datetime,
     start_time: datetime,
     shift_dur_hour: int,
@@ -111,7 +111,7 @@ def generate_circuit(
         # paths list stores each generated patrol path as the full route is generated
         # will be used to count the patrol frequencies for each path
 
-        paths: list[tuple[str, str]] = []
+        paths: list[tuple[int, int]] = []
 
         for name, alias, card in sentries:
             # routes will be generated one sentry (ID) at a time
@@ -119,7 +119,7 @@ def generate_circuit(
             current_time: int = shift_start
 
             # each route will start at a random checkpoint, and check-in info is stored in routes list
-            starting_checkpoint: str = random.choice(list(checkpoints.keys()))
+            starting_checkpoint: int = random.choice(list(checkpoints.keys()))
 
             # individual check-in info is stored at beginning of shift
             # time stored as epoch time
@@ -138,11 +138,11 @@ def generate_circuit(
             }
 
             # second, explained above
-            second: str = ""
+            second: int = None
 
             while current_time < shift_end:
-                first: str = second or starting_checkpoint
-                # if second is "", assign to start instead
+                first: int = starting_checkpoint if second is None else second
+                # if second is None, assign to start instead
 
                 # pick second at random from immediate neighbours together with the path duration
                 pick = random.choices(
@@ -152,7 +152,7 @@ def generate_circuit(
                 second, path_duration = checkpoints[first][pick]
 
                 # pair the two checkpoints to form a path
-                path: tuple[str, str] = (first, second)
+                path: tuple[int, int] = (first, second)
 
                 # update the current time path to reflect the time offset (time taken to patrol generated path)
                 current_time += path_duration

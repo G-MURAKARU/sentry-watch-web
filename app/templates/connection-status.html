@@ -15,11 +15,11 @@
         include 'red-circle.html' %}{% endif %}
       </svg>
     </li>
-    {% for chkpt, connected in chk_connected.items() %}
+    {% for chkpt_id, details in chk_connected.items() %}
     <li class="list-group-item list-group-item-light">
-      {{ chkpt }}:
+      {{ details["name"] }} ({{ chkpt_id }}):
       <svg height="20" width="20">
-        {% if connected %}{% include 'green-circle.html' %}{% else %} {% include
+        {% if details["conn"] %}{% include 'green-circle.html' %}{% else %} {% include
         'red-circle.html' %}{% endif %}
       </svg>
     </li>

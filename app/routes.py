@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from contextlib import suppress
+from re import A
 
 from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
@@ -64,7 +65,7 @@ CHK_CONNECTED = {}
 
 with app.app_context():
     # Loading the default checkpoint connection state for the setup checkpoints
-    CHK_CONNECTED = {chkpt.name: False for chkpt in Checkpoint.query.all()}
+    CHK_CONNECTED = {chkpt.id: {"name":chkpt.name, "conn":False} for chkpt in Checkpoint.query.all()}
 
 
 # UTILITY FUNCTIONS FOR THE FRONTEND
@@ -181,7 +182,7 @@ def create_route():
             #     "H": [("G", 90), ("I", 90), ("E", 60)],
             #     "I": [("H", 90), ("F", 60)],
             # }
-            checkpts = {chkpt.name: chkpt.paths_out for chkpt in Checkpoint.query.all()}
+            checkpts = {chkpt.id: chkpt.paths_out for chkpt in Checkpoint.query.all()}
 
             # retrieve start time, end time, path patrol frequencies and full circuit from generate_circuit output
             start, end, paths, circuit = utils.generate_circuit(
@@ -342,13 +343,28 @@ def view_one_circuit(shift_id):
 
     # query a specific shift, filtered using the shift's database ID
     shift = Shift.query.get_or_404(shift_id)
+    path_freqs = [
+        (
+            (CHK_CONNECTED[path[0][0]]["name"], CHK_CONNECTED[path[0][1]]["name"]),
+            path[1]
+        )
+        for path in shift.path_freqs
+    ]
+    sentry_routes = [
+        [
+            CHK_CONNECTED[route["checkpoint"]]["name"]
+            for route in sentry["route"]
+        ]
+        for sentry in shift.circuit
+    ]
     return render_template(
         "view-circuit.html",
         shift_id=shift.id,
         sentries=shift.circuit,
         title="Previous Route",
         index=0,
-        paths=shift.path_freqs,
+        paths=path_freqs,
+        sentry_routes=sentry_routes,
         start=shift.shift_start,
         end=shift.shift_end,
         completed=shift.completed,
@@ -598,7 +614,9 @@ def on_mqtt_message(client, userdata, message):
                     global HANDLER_CONNECTED
                     HANDLER_CONNECTED = bool(connected)
                 case _:
-                    CHK_CONNECTED[client] = bool(connected)
+                    if client[:11] == "Checkpoint-":
+                        chkid = int(client[11:])
+                        CHK_CONNECTED[chkid]["conn"] = bool(connected)
 
     # alert topic if a scan is overdue
     elif topic == CHKS_OVERDUE:

@@ -38,7 +38,7 @@ MQTT_PASS = mqtt_configs.get("MQTT_PASS")
 # global variables to store shift/circuit information
 
 # circuit's time-validating queue
-CIRCUIT = None
+CHECKIN_QUEUE = None
 
 # on-duty cards (IDs)
 CARDS = None
@@ -101,7 +101,7 @@ def generate_checkins(circuits: list[dict]):
     # a queue is used because the validation algorithm will pop values off the beginning of the list
     # when the check-in window for that check-in has elapsed
     # queues are more efficient than lists when it comes to deleting from the beginning (index 0)
-    # this queue will be saved in the CIRCUIT global variable
+    # this queue will be saved in the CHECKIN_QUEUE global variable
 
     check_ins.sort(key=itemgetter("time"))
     return deque(check_ins)
@@ -120,7 +120,7 @@ def validate_scan(check_in: dict):
     valid_id = False
     valid_time = False
 
-    for item in CIRCUIT:
+    for item in CHECKIN_QUEUE:
         # if scan is valid (right sentry, right checkpoint, right time), return message
         if (
             id == item["id"]
@@ -157,7 +157,7 @@ def analyse_checkins(client: mqtt.Client):
     while SHIFT_STATUS:
         # if all check-ins have been validated / circuit is exhausted
         print("checking")
-        if not ALARM_ON_OFF and not CIRCUIT:
+        if not ALARM_ON_OFF and not CHECKIN_QUEUE:
             client.publish(topic=DONE, payload=None, qos=2)
             break
 
@@ -169,9 +169,9 @@ def analyse_checkins(client: mqtt.Client):
 
         time_now = int(datetime.timestamp(datetime.now()))  # 1
 
-        if time_now > CIRCUIT[0]["time"] + CHECK_IN_WINDOW:  # 2
+        if time_now > CHECKIN_QUEUE[0]["time"] + CHECK_IN_WINDOW:  # 2
             print("analysed")
-            current = CIRCUIT.popleft()  # 3
+            current = CHECKIN_QUEUE.popleft()  # 3
             if not ALARM_ON_OFF and not current["checked"]:  # 4 -> only checked if alarm is off
                 client.publish(topic=CHKS_OVERDUE, payload=json.dumps(current), qos=2)
 
@@ -213,7 +213,7 @@ def on_mqtt_message(client: mqtt.Client, userdata, message):
 
     topic = message.topic
 
-    global CIRCUIT
+    global CHECKIN_QUEUE
     global SHIFT_STATUS
     global ALARM_ON_OFF
 
@@ -236,7 +236,7 @@ def on_mqtt_message(client: mqtt.Client, userdata, message):
         # which is what is stored in the 'route' key of each dict in the 'payload' list
         # this is essentially a list/queue of check-ins
 
-        CIRCUIT = generate_checkins(payload)
+        CHECKIN_QUEUE = generate_checkins(payload)
 
         # passing the analyser to a separate thread to avoid blocking the main thread
         # since the analyser has a conditional infinite loop, running it on this thread
@@ -256,7 +256,7 @@ def on_mqtt_message(client: mqtt.Client, userdata, message):
         #     scan-time: time at which the sentry has scanned
         # }
 
-        # these are checked against the checkpoint, id, and time keys respectively, of each dict in CIRCUIT
+        # these are checked against the checkpoint, id, and time keys respectively, of each dict in CHECKIN_QUEUE
         # if a match is found, the value of the checked key is set to True
         # else send validation result to web app
 
@@ -275,7 +275,7 @@ def on_mqtt_message(client: mqtt.Client, userdata, message):
         if payload == "OFF":
             SHIFT_STATUS = False
             time.sleep(1)
-            CIRCUIT = None
+            CHECKIN_QUEUE = None
 
         # shift active
         elif payload == "ON":

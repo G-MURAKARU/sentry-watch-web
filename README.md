@@ -5,7 +5,7 @@
 The requirements.txt file for setting up a python virtual environment is provided.  
 A Dockerfile ("EnvDockerfile") for building an image for the python environment is also provided. The following are the required commands for this approach:
 ```
-$   docker build -t sentry-platform-env -f EnvDockerfile.
+$   docker build -t sentry-platform-env -f EnvDockerfile .
 $   docker run -it --name sentry-platform --rm \
 		--volume "$(pwd):/usr/src/app" \
 		--net=host sentry-platform-env:latest \

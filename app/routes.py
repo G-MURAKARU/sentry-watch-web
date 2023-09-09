@@ -62,60 +62,9 @@ HANDLER_CONNECTED = False
 # Checkpoint connection to broker
 CHK_CONNECTED = {}
 
-
-# Database initialization
-# with app.app_context():
-#     # db.create_all()
-
-#     # To create supervisor login if none exist
-#     if Supervisor.query.count() == 0:
-#         new_supervisor = Supervisor(
-#             email="supervisor@sentrywatch.com",
-#             password=bcrypt.generate_password_hash("Master0Pass").decode("utf-8"),
-#         )
-#         db.session.add(new_supervisor)
-#         db.session.commit()
-#     # To create Checkpoints if none exist
-#     if Checkpoint.query.count() == 0:
-#         checks = [
-#             Checkpoint(name="Checkpoint A"),  # 0
-#             Checkpoint(name="Checkpoint B"),  # 1
-#             Checkpoint(name="Checkpoint C"),  # 2
-#             Checkpoint(name="Checkpoint D"),  # 3
-#             Checkpoint(name="Checkpoint E"),  # 4
-#             Checkpoint(name="Checkpoint F"),  # 5
-#             Checkpoint(name="Checkpoint G"),  # 6
-#             Checkpoint(name="Checkpoint H"),  # 7
-#             Checkpoint(name="Checkpoint I"),  # 8
-#         ]
-#         db.session.add_all(checks)
-#         db.session.commit()
-
-#         # Setting a rectangular grid with naming going left-to-right then top-to-bottom
-#         GRID_WIDTH = 3
-#         for i in range(len(checks)):
-#             # Checkpoint leftwards
-#             if (i % GRID_WIDTH) > 0:
-#                 checks[i].append_path_out((checks[i - 1].name, 90))
-#             # Checkpoint upwards
-#             if i >= GRID_WIDTH:
-#                 if i < (2 * GRID_WIDTH):  # First vertical is 60 duration
-#                     checks[i].append_path_out((checks[i - GRID_WIDTH].name, 60))
-#                 else:
-#                     checks[i].append_path_out((checks[i - GRID_WIDTH].name, 70))
-#             # Checkpoint rightwards
-#             if (i + 1) < len(checks) and ((i + 1) % GRID_WIDTH) > 0:
-#                 checks[i].append_path_out((checks[i + 1].name, 90))
-#             # Checkpoint downwards
-#             if (i + GRID_WIDTH) < len(checks):
-#                 if i < GRID_WIDTH:  # First vertical is 60 duration
-#                     checks[i].append_path_out((checks[i + GRID_WIDTH].name, 60))
-#                 else:
-#                     checks[i].append_path_out((checks[i + GRID_WIDTH].name, 70))
-#         db.session.commit()
-
-#     # Loading the default checkpoint connection state for the setup checkpoints
-#     CHK_CONNECTED = {chkpt.name: False for chkpt in Checkpoint.query.all()}
+with app.app_context():
+    # Loading the default checkpoint connection state for the setup checkpoints
+    CHK_CONNECTED = {chkpt.name: False for chkpt in Checkpoint.query.all()}
 
 
 # UTILITY FUNCTIONS FOR THE FRONTEND

@@ -1,3 +1,4 @@
+alembic==1.12.0
 bcrypt==4.0.1
 bidict==0.22.1
 black==23.3.0
@@ -10,7 +11,9 @@ Flask==2.2.3
 Flask-Bcrypt==1.0.1
 Flask-Bootstrap==3.3.7.1
 Flask-Login==0.6.2
+Flask-Migrate==4.0.4
 Flask-MQTT==1.1.1
+Flask-Script==2.0.6
 Flask-SocketIO==5.3.3
 Flask-SQLAlchemy==3.0.3
 Flask-WTF==1.1.1
@@ -18,6 +21,7 @@ greenlet==2.0.2
 idna==3.4
 itsdangerous==2.1.2
 Jinja2==3.1.2
+Mako==1.2.4
 MarkupSafe==2.1.2
 mypy-extensions==1.0.0
 packaging==23.0

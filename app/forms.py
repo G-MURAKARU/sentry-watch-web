@@ -10,6 +10,7 @@ from wtforms import (
     StringField,
     SubmitField,
     TimeField,
+    IntegerField,
 )
 from wtforms.validators import Email, InputRequired, Length, ValidationError
 from wtforms_sqlalchemy.fields import QuerySelectField, QuerySelectMultipleField
@@ -217,3 +218,13 @@ class CircuitSelectionForm(FlaskForm):
         validators=[InputRequired()],
     )
     submit = SubmitField("Select Circuit")
+
+
+class CheckpointRegistrationForm(FlaskForm):
+    """
+    Registration form for Premises' Checkpoints
+    """
+
+    chk_id = IntegerField("Checkpoint ID", validators=[InputRequired()])
+    chk_name = StringField("Checkpoint Name", validators=[InputRequired()])
+    submit = SubmitField("Register")

@@ -1,11 +1,9 @@
 import json
 from datetime import datetime
 from contextlib import suppress
-from re import A
 
 from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
-from flask_migrate import migrate
 
 import app.utils as utils
 from app import app, bcrypt, db, mqtt, socketio
@@ -18,6 +16,7 @@ from .forms import (
     SentryRegistrationForm,
     UpdateCardForm,
     UpdateSentryForm,
+    CheckpointRegistrationForm,
 )
 
 from .models import Card, Sentry, Shift, Supervisor, Checkpoint
@@ -65,7 +64,9 @@ CHK_CONNECTED = {}
 
 with app.app_context():
     # Loading the default checkpoint connection state for the setup checkpoints
-    CHK_CONNECTED = {chkpt.id: {"name":chkpt.name, "conn":False} for chkpt in Checkpoint.query.all()}
+    CHK_CONNECTED = {
+        chkpt.id: {"name": chkpt.name, "conn": False} for chkpt in Checkpoint.query.all()
+    }
 
 
 # UTILITY FUNCTIONS FOR THE FRONTEND
@@ -344,17 +345,11 @@ def view_one_circuit(shift_id):
     # query a specific shift, filtered using the shift's database ID
     shift = Shift.query.get_or_404(shift_id)
     path_freqs = [
-        (
-            (CHK_CONNECTED[path[0][0]]["name"], CHK_CONNECTED[path[0][1]]["name"]),
-            path[1]
-        )
+        ((CHK_CONNECTED[path[0][0]]["name"], CHK_CONNECTED[path[0][1]]["name"]), path[1])
         for path in shift.path_freqs
     ]
     sentry_routes = [
-        [
-            CHK_CONNECTED[route["checkpoint"]]["name"]
-            for route in sentry["route"]
-        ]
+        [CHK_CONNECTED[route["checkpoint"]]["name"] for route in sentry["route"]]
         for sentry in shift.circuit
     ]
     return render_template(
@@ -500,7 +495,7 @@ def register_card():
         "register-card.html",
         title="Register Card",
         form=form,
-        legend="Registed RFID Card",
+        legend="Register RFID Card",
     )
 
 
@@ -543,6 +538,64 @@ def delete_card(card_id):
     db.session.commit()
     flash("Card Deleted.", "danger")
     return redirect(url_for("view_all_cards"))
+
+
+@app.route("/checkpoints", methods=["GET", "POST"])
+@login_required  # ensures that supervisor is logged in to access
+def handle_checkpoint():
+    """
+    handles logic for webpage providing interface for registering a card
+    """
+
+    all_checkpoints = Checkpoint.query.all()
+
+    form = CheckpointRegistrationForm()
+
+    if form.validate_on_submit():
+        # create checkpoint object to save to DB
+        chkpt_id = form.chk_id.data
+        chkpt_name = form.chk_name.data
+        checkpoint = Checkpoint(id=chkpt_id, name=chkpt_name)
+
+        # update CHK_CONNECTED
+        CHK_CONNECTED.update({chkpt_id: {"name": chkpt_name, "conn": False}})
+
+        # commit/save the new checkpoint to the database
+        db.session.add(checkpoint)
+        db.session.commit()
+
+        # redirect to homepage
+        flash("Checkpoint registered successfully.", "success")
+        return redirect(url_for("handle_checkpoint"))
+
+    return render_template(
+        "handle-checkpoints.html",
+        title="Handle Checkpoints",
+        form=form,
+        legend="Register Checkpoint",
+        checkpoints=all_checkpoints,
+    )
+
+
+@app.route("/checkpoints/<int:chk_id>/delete", methods=["POST"])
+@login_required  # ensures that supervisor is logged in to access
+def delete_checkpoint(chk_id):
+    """
+    deletes a saved checkpoint from the database
+    """
+
+    # query the checkpoint from the database
+    checkpoint = Checkpoint.query.get_or_404(chk_id)
+
+    # update CHK_CONNECTED
+    CHK_CONNECTED.pop(checkpoint.id)
+
+    # delete the checkpoint from the database
+    db.session.delete(checkpoint)
+    db.session.commit()
+    flash("Checkpoint Deleted.", "danger")
+
+    return redirect(url_for("handle_checkpoint"))
 
 
 @app.route("/logout")

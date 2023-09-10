@@ -1,0 +1,41 @@
+{% extends "layout.html" %} {% block content %}
+<div class="content-section">
+  <div class="center">
+    <form method="POST" action="">
+      {{ form.hidden_tag() }}
+      <fieldset class="form-group">
+        <legend class="border-bottom mb-4">{{ legend }}</legend>
+        <div class="row">
+          <div class="col-6 form-group my-4">
+            {{ form.chk_id.label(class="form-control-label") }} {% if
+            form.chk_id.errors %} {{ form.chk_id(class="form-control
+            form-control-lg is-invalid") }}
+            <div class="invalid-feedback">
+              {% for error in form.chk_id.errors %}
+              <span>{{ error }}</span>
+              {% endfor %}
+            </div>
+            {% else %} {{ form.chk_id(class="form-control form-control-lg")}} {%
+            endif %}
+          </div>
+          <div class="col-6 form-group my-4">
+            {{ form.chk_name.label(class="form-control-label") }} {% if
+            form.chk_name.errors %} {{ form.chk_name(class="form-control
+            form-control-lg is-invalid") }}
+            <div class="invalid-feedback">
+              {% for error in form.chk_name.errors %}
+              <span>{{ error }}</span>
+              {% endfor %}
+            </div>
+            {% else %} {{ form.chk_name(class="form-control form-control-lg")}}
+            {% endif %}
+          </div>
+        </div>
+      </fieldset>
+      <div class="form-group mt-2 mb-4">
+        {{ form.submit(class="btn btn-outline-info rounded-pill") }}
+      </div>
+    </form>
+  </div>
+</div>
+{% include 'view-all-checkpoints.html' %} {% endblock content %}

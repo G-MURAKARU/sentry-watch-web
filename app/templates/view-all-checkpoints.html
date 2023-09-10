@@ -1,46 +1,41 @@
-{% extends 'layout.html' %}{% block content %}
-<h2>All Registered Sentries</h2>
+<h2>All Registered Checkpoints</h2>
 <article class="media content-section">
   <div class="media-body">
     <table class="table">
       <thead class="bg-steel">
         <tr>
           <th scope="col" style="color: white">#</th>
-          <th scope="col" style="color: white">National ID</th>
-          <th scope="col" style="color: white">Full Name</th>
-          <th scope="col" style="color: white">Phone Number</th>
-          <th scope="col" style="color: white">Sentry Actions</th>
+          <th scope="col" style="color: white">Checkpoint ID</th>
+          <th scope="col" style="color: white">Checkpoint Name</th>
+          <th scope="col" style="color: white">Checkpoint Actions</th>
         </tr>
       </thead>
       <tbody class="table-group-divider">
-        {% for sentry in sentries %}
+        {% for checkpoint in checkpoints %}
         <tr>
-          <th scope="row">{{ sentry.id }}</th>
-          <td>{{ sentry.national_id }}</td>
-          <td>{{ sentry.full_name }}</td>
-          <td>{{ sentry.phone_no }}</td>
+          <th scope="row">{{ loop.index }}</th>
+          <td>{{ checkpoint.id }}</td>
+          <td>{{ checkpoint.name }}</td>
           <td class="align-middle">
-            <div class="row my-2" style="width: 150px">
-              <a
-                class="btn btn-outline-info rounded-pill"
-                href="{{ url_for('update_sentry', sentry_id=sentry.id) }}"
-                >Edit Sentry Info</a
+            <div class="row my-2" style="width: 200px">
+              <a class="btn btn-outline-info rounded-pill" href="#"
+                >Edit Checkpoint Info</a
               >
             </div>
-            <div class="row my-2" style="width: 150px">
-              <!-- from Bootstrap website, static modal -->
+            <!-- from Bootstrap website, static modal -->
+            <div class="row my-2" style="width: 200px">
               <button
                 type="button"
                 class="btn btn-outline-danger rounded-pill"
                 data-bs-toggle="modal"
-                data-bs-target="#delete-sentry"
+                data-bs-target="#delete-checkpoint-{{ checkpoint.id }}"
               >
-                Delete Sentry
+                Delete Checkpoint
               </button>
               <!-- Modal -->
               <div
                 class="modal fade"
-                id="delete-sentry"
+                id="delete-checkpoint-{{ checkpoint.id }}"
                 data-bs-backdrop="static"
                 data-bs-keyboard="false"
                 tabindex="-1"
@@ -51,7 +46,7 @@
                   <div class="modal-content">
                     <div class="modal-header">
                       <h1 class="modal-title fs-5" id="staticBackdropLabel">
-                        Deleting Sentry...
+                        Deleting Checkpoint...
                       </h1>
                       <button
                         type="button"
@@ -60,7 +55,12 @@
                         aria-label="Close"
                       ></button>
                     </div>
-                    <div class="modal-body">Delete Sentry?</div>
+                    <div class="modal-body">
+                      Delete Checkpoint
+                      <span style="font-weight: bold; color: red"
+                        >{{ checkpoint.name }}</span
+                      >?
+                    </div>
                     <div class="modal-footer">
                       <button
                         type="button"
@@ -70,13 +70,13 @@
                         Close
                       </button>
                       <form
-                        action="{{ url_for('delete_sentry', sentry_id=sentry.id) }}"
+                        action="{{ url_for('delete_checkpoint', chk_id=checkpoint.id) }}"
                         method="POST"
                       >
                         <input
                           class="btn btn-outline-danger rounded-pill"
                           type="submit"
-                          value="Delete Sentry"
+                          value="Delete Checkpoint"
                         />
                       </form>
                     </div>
@@ -92,4 +92,3 @@
     </table>
   </div>
 </article>
-{% endblock content %}

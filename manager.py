@@ -5,12 +5,12 @@ from app.models import Supervisor, Checkpoint
 from flask_bcrypt import bcrypt
 
 
-class Manager():
+class Manager:
     def create_supervisor():
         with app.app_context():
             # To create supervisor login if none exist
             if Supervisor.query.count() == 0:
-                print ("Adding supervisor")
+                print("Adding supervisor")
                 new_supervisor = Supervisor(
                     email="supervisor@company.com",
                     password=bcrypt.generate_password_hash("Master0Pass").decode("utf-8"),
@@ -22,7 +22,7 @@ class Manager():
         with app.app_context():
             # To create Checkpoints if none exist
             if Checkpoint.query.count() == 0:
-                print ("Adding checkpoints")
+                print("Adding checkpoints")
                 checks = [
                     Checkpoint(id=0, name="Checkpoint A"),  # 0
                     Checkpoint(id=1, name="Checkpoint B"),  # 1
@@ -37,7 +37,7 @@ class Manager():
                 db.session.add_all(checks)
                 db.session.commit()
 
-                print ("Adding patrol paths")
+                print("Adding patrol paths")
                 # Setting a rectangular grid with naming going left-to-right then top-to-bottom
                 GRID_WIDTH = 3
                 for i in range(len(checks)):
@@ -73,16 +73,18 @@ class Manager():
 
 
 def manager():
-    """My main function
-    """
+    """My main function"""
     argc = len(argv)
     if argc <= 1:
         print("Select the command to execute:")
-        print(*["\t{}".format(k) for k,v in  Manager.__dict__.items() if hasattr(v, "__call__")], sep = "\n")
+        print(
+            *[f"\t{k}" for k, v in Manager.__dict__.items() if hasattr(v, "__call__")],
+            sep="\n",
+        )
     else:
         if argc > 2:
             print("Only one command at a time (Running the first)")
-        eval("Manager.{}()".format(argv[1]))
+        eval(f"Manager.{argv[1]}()")
 
 
 if __name__ == "__main__":

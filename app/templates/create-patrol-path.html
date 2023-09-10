@@ -1,0 +1,53 @@
+{% extends "layout.html" %} {% block content %}
+<div class="content-section">
+  <div class="center">
+    <form method="POST" action="">
+      {{ form.hidden_tag() }}
+      <fieldset class="form-group">
+        <legend class="border-bottom mb-4">{{ legend }}</legend>
+        <div class="row">
+          <div class="col-4 form-group my-4">
+            {{ form.start.label(class="form-control-label") }} {% if
+            form.start.errors %} {{ form.start(class="form-control
+            form-control-lg is-invalid") }}
+            <div class="invalid-feedback">
+              {% for error in form.start.errors %}
+              <span>{{ error }}</span>
+              {% endfor %}
+            </div>
+            {% else %} {{ form.start(class="form-control form-control-lg")}} {%
+            endif %}
+          </div>
+          <div class="col-4 form-group my-4">
+            {{ form.end.label(class="form-control-label") }} {% if
+            form.end.errors %} {{ form.end(class="form-control form-control-lg
+            is-invalid") }}
+            <div class="invalid-feedback">
+              {% for error in form.end.errors %}
+              <span>{{ error }}</span>
+              {% endfor %}
+            </div>
+            {% else %} {{ form.end(class="form-control form-control-lg")}} {%
+            endif %}
+          </div>
+          <div class="col-4 form-group my-4">
+            {{ form.duration.label(class="form-control-label") }} {% if
+            form.duration.errors %} {{ form.duration(class="form-control
+            form-control-lg is-invalid") }}
+            <div class="invalid-feedback">
+              {% for error in form.duration.errors %}
+              <span>{{ error }}</span>
+              {% endfor %}
+            </div>
+            {% else %} {{ form.duration(class="form-control form-control-lg")}}
+            {% endif %}
+          </div>
+        </div>
+      </fieldset>
+      <div class="form-group mt-2 mb-4">
+        {{ form.submit(class="btn btn-outline-info rounded-pill") }}
+      </div>
+    </form>
+  </div>
+</div>
+{% include 'view-all-paths.html' %} {% endblock content %}

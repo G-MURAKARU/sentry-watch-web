@@ -51,9 +51,20 @@
             form.shift_cards(class="form-control form-control-lg") }}
           </div>
         </div>
+        <div class="row">
+          <div class="col-6 form-group my-3">
+            {{ form.shift_paths.label(class="form-control-label") }} {{
+            form.shift_paths(class="form-control form-control-lg") }}
+          </div>
+        </div>
       </fieldset>
-      <div class="form-group mt-2 mb-4">
-        {{ form.submit(class="btn btn-outline-info rounded-pill") }}
+      <div class="row">
+        <div class="col-md-6 form-group mt-2 mb-4">
+          {{ form.submit(class="btn btn-outline-info rounded-pill") }}
+        </div>
+        <div class="col-md-6" style="width: 250px">
+          <a class="btn btn-info rounded-pill" href={{ url_for("handle_path") }}>Create Patrol Path</a>
+        </div>
       </div>
     </form>
   </div>

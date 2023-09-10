@@ -37,7 +37,7 @@
       <tbody class="table-group-divider">
         {% for path in paths %}
         <tr>
-          <th scope="row">{{ index + 1 }}</th>
+          <th scope="row">{{ loop.index }}</th>
           <td>{{ path[0][0] }} - {{ path[0][1] }}</td>
           <td>{{ path[1] }}</td>
         </tr>
@@ -70,7 +70,7 @@
       <tbody class="table-group-divider">
         {% for route in sentry.route %}
         <tr>
-          <th scope="row">{{ index + 1 }}</th>
+          <th scope="row">{{ loop.index }}</th>
           <td>{{ route.checkpoint }}</td>
           <td>{{ route.time|readable }}</td>
           <td>

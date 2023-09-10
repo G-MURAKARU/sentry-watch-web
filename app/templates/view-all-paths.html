@@ -1,0 +1,97 @@
+<h2>All Created Patrol Paths</h2>
+<article class="media content-section">
+  <div class="media-body">
+    <table class="table">
+      <thead class="bg-steel">
+        <tr>
+          <th scope="col" style="color: white">#</th>
+          <th scope="col" style="color: white">Starting Checkpoint</th>
+          <th scope="col" style="color: white">Destination Checkpoint</th>
+          <th scope="col" style="color: white">Patrol Duration</th>
+          <th scope="col" style="color: white">Path Actions</th>
+        </tr>
+      </thead>
+      <tbody class="table-group-divider">
+        {% for path in paths %}
+        <tr>
+          <th scope="row">{{ loop.index }}</th>
+          <td>{{ path.src_checkpoint.name }}</td>
+          <td>{{ path.dest_checkpoint.name }}</td>
+          <td>{{ (path.duration / 60) }} minutes</td>
+          <td class="align-middle">
+            <div class="row my-2" style="width: 200px">
+              <a class="btn btn-outline-info rounded-pill" href="#"
+                >Edit Path Info</a
+              >
+            </div>
+            <!-- from Bootstrap website, static modal -->
+            <div class="row my-2" style="width: 200px">
+              <button
+                type="button"
+                class="btn btn-outline-danger rounded-pill"
+                data-bs-toggle="modal"
+                data-bs-target="#delete-path-{{ path.id }}"
+              >
+                Delete Patrol Path
+              </button>
+              <!-- Modal -->
+              <div
+                class="modal fade"
+                id="delete-path-{{ path.id }}"
+                data-bs-backdrop="static"
+                data-bs-keyboard="false"
+                tabindex="-1"
+                aria-labelledby="staticBackdropLabel"
+                aria-hidden="true"
+              >
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h1 class="modal-title fs-5" id="staticBackdropLabel">
+                        Deleting Patrol Path...
+                      </h1>
+                      <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"
+                      ></button>
+                    </div>
+                    <div class="modal-body">
+                      Delete Patrol Path
+                      <span style="font-weight: bold; color: red"
+                        >{{ path.src_checkpoint.name }} to {{
+                        path.dest_checkpoint.name }}</span
+                      >?
+                    </div>
+                    <div class="modal-footer">
+                      <button
+                        type="button"
+                        class="btn btn-outline-secondary rounded-pill"
+                        data-bs-dismiss="modal"
+                      >
+                        Close
+                      </button>
+                      <form
+                        action="{{ url_for('delete_path', path_id=path.id) }}"
+                        method="POST"
+                      >
+                        <input
+                          class="btn btn-outline-danger rounded-pill"
+                          type="submit"
+                          value="Delete Path"
+                        />
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!--end Modal-->
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>

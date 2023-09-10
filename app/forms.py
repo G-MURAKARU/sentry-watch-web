@@ -15,7 +15,7 @@ from wtforms import (
 from wtforms.validators import Email, InputRequired, Length, ValidationError
 from wtforms_sqlalchemy.fields import QuerySelectField, QuerySelectMultipleField
 
-from app.models import Card, Sentry, Shift
+from app.models import Card, Sentry, Shift, PatrolPath, Checkpoint
 
 
 class SentryRegistrationForm(FlaskForm):
@@ -189,6 +189,13 @@ class CircuitGenerationForm(FlaskForm):
         get_label="alias",
         validators=[InputRequired()],
     )
+    shift_paths = QuerySelectMultipleField(
+        "Patrol Paths",
+        query_factory=lambda: PatrolPath.query.all(),
+        allow_blank=False,
+        description="A path and its reverse path are considered two different paths",
+        validators=[InputRequired()],
+    )
     submit = SubmitField("Generate Circuit")
 
     def validate(self, extra_validators=None):
@@ -228,3 +235,41 @@ class CheckpointRegistrationForm(FlaskForm):
     chk_id = IntegerField("Checkpoint ID", validators=[InputRequired()])
     chk_name = StringField("Checkpoint Name", validators=[InputRequired()])
     submit = SubmitField("Register")
+
+
+class PathCreationForm(FlaskForm):
+    """
+    Creation form for a sentry path: start checkpoint, end checkpoint, duration
+    """
+
+    start = QuerySelectField(
+        "Start Checkpiont",
+        query_factory=lambda: Checkpoint.query.all(),
+        allow_blank=False,
+        get_label="name",
+        validators=[InputRequired()],
+    )
+    end = QuerySelectField(
+        "Destination Checkpoint",
+        query_factory=lambda: Checkpoint.query.all(),
+        allow_blank=False,
+        get_label="name",
+        validators=[InputRequired()],
+    )
+    duration = IntegerField("Patrol Duration", validators=[InputRequired()])
+    submit = SubmitField("Add Path")
+
+    def validate(self, extra_validators=None):
+        valid = FlaskForm.validate(self)
+        if not valid:
+            return False
+
+        if self.start.data == self.end.data:
+            self.end.errors.append("Start and destination checkpoints should differ.")
+            return False
+
+        if self.duration.data < 1:
+            self.duration.errors.append("Duration must be a minute at least.")
+            return False
+
+        return True

@@ -4,6 +4,7 @@ from contextlib import suppress
 
 from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
+from sqlalchemy.exc import IntegrityError
 
 import app.utils as utils
 from app import app, bcrypt, db, mqtt, socketio
@@ -17,9 +18,10 @@ from .forms import (
     UpdateCardForm,
     UpdateSentryForm,
     CheckpointRegistrationForm,
+    PathCreationForm,
 )
 
-from .models import Card, Sentry, Shift, Supervisor, Checkpoint
+from .models import Card, Sentry, Shift, Supervisor, Checkpoint, PatrolPath
 from .mqtts import (
     ALARM,
     ALERTS,
@@ -183,12 +185,40 @@ def create_route():
             #     "H": [("G", 90), ("I", 90), ("E", 60)],
             #     "I": [("H", 90), ("F", 60)],
             # }
-            checkpts = {chkpt.id: chkpt.paths_out for chkpt in Checkpoint.query.all()}
+
+            # checkpts = {chkpt.id: chkpt.paths_out for chkpt in Checkpoint.query.all()}
+            path_list = []
+
+            for path_obj in form.shift_paths.data:
+                path_list.extend(
+                    (
+                        (
+                            path_obj.chkpt_src,
+                            path_obj.chkpt_dest,
+                            path_obj.duration,
+                        ),
+                        (
+                            path_obj.chkpt_dest,
+                            path_obj.chkpt_src,
+                            path_obj.duration,
+                        ),
+                    )
+                )
+
+            path_dict = {}
+
+            for path in path_list:
+                if path[0] in path_dict:
+                    neighbours = path_dict[path[0]]
+                    neighbours.append((path[1], path[2]))
+                    path_dict[path[0]] = neighbours
+                else:
+                    path_dict[path[0]] = [(path[1], path[2])]
 
             # retrieve start time, end time, path patrol frequencies and full circuit from generate_circuit output
             start, end, paths, circuit = utils.generate_circuit(
                 sentries=assignments,
-                checkpoints=checkpts,
+                checkpoints=path_dict,
                 start_date=date,
                 start_time=time,
                 shift_dur_hour=hours,
@@ -544,7 +574,7 @@ def delete_card(card_id):
 @login_required  # ensures that supervisor is logged in to access
 def handle_checkpoint():
     """
-    handles logic for webpage providing interface for registering a card
+    handles logic for webpage providing interface for handling checkpoints
     """
 
     all_checkpoints = Checkpoint.query.all()
@@ -596,6 +626,61 @@ def delete_checkpoint(chk_id):
     flash("Checkpoint Deleted.", "danger")
 
     return redirect(url_for("handle_checkpoint"))
+
+
+@app.route("/paths", methods=["GET", "POST"])
+@login_required  # ensures that supervisor is logged in to access
+def handle_path():
+    """
+    handles logic for webpage providing interface for handling patrol paths
+    """
+
+    all_paths = PatrolPath.query.all()
+
+    form = PathCreationForm()
+
+    if form.validate_on_submit():
+        start_chk = form.start.data.id
+        end_chk = form.end.data.id
+        dur = form.duration.data * 60  # to convert to seconds
+
+        path = PatrolPath(chkpt_src=start_chk, chkpt_dest=end_chk, duration=dur)
+        try:
+            db.session.add(path)
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            flash("Patrol Path already exists.", "danger")
+        else:
+            flash("Patrol Path Created Successfully.", "success")
+        finally:
+            return redirect(url_for("handle_path"))
+
+    return render_template(
+        "create-patrol-path.html",
+        title="Create Patrol Path",
+        form=form,
+        legend="Create Patrol Path",
+        paths=all_paths,
+    )
+
+
+@app.route("/paths/<int:path_id>/delete", methods=["POST"])
+@login_required  # ensures that supervisor is logged in to access
+def delete_path(path_id):
+    """
+    deletes a saved patrol path from the database
+    """
+
+    # query the checkpoint from the database
+    path = PatrolPath.query.get_or_404(path_id)
+
+    # delete the checkpoint from the database
+    db.session.delete(path)
+    db.session.commit()
+    flash("Patrol Path Deleted.", "danger")
+
+    return redirect(url_for("handle_path"))
 
 
 @app.route("/logout")

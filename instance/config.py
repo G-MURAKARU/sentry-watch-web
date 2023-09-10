@@ -22,5 +22,3 @@ MQTT_KEEPALIVE = 3600
 MQTT_LAST_WILL_TOPIC = "sentry-platform/backend-server/shift-status"
 MQTT_LAST_WILL_MESSAGE = "OFF"
 MQTT_LAST_WILL_QOS = 2
-
-password = "$2b$12$PqffSm1f9TGFmU0MwYTCXOz70YS3XjeW0B6iYybiv6IBlZpqjV59O"

@@ -33,14 +33,14 @@
                 type="button"
                 class="btn btn-outline-danger rounded-pill"
                 data-bs-toggle="modal"
-                data-bs-target="#delete-sentry"
+                data-bs-target="#delete-sentry-{{ sentry.id }}"
               >
                 Delete Sentry
               </button>
               <!-- Modal -->
               <div
                 class="modal fade"
-                id="delete-sentry"
+                id="delete-sentry-{{ sentry.id }}"
                 data-bs-backdrop="static"
                 data-bs-keyboard="false"
                 tabindex="-1"
@@ -60,7 +60,12 @@
                         aria-label="Close"
                       ></button>
                     </div>
-                    <div class="modal-body">Delete Sentry?</div>
+                    <div class="modal-body">
+                      Delete Sentry
+                      <span style="font-weight: bold; color: red"
+                        >{{ sentry.full_name }}</span
+                      >?
+                    </div>
                     <div class="modal-footer">
                       <button
                         type="button"

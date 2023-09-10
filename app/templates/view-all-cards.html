@@ -31,14 +31,14 @@
                 type="button"
                 class="btn btn-outline-danger rounded-pill"
                 data-bs-toggle="modal"
-                data-bs-target="#delete-card"
+                data-bs-target="#delete-card-{{ card.id }}"
               >
                 Delete Card
               </button>
               <!-- Modal -->
               <div
                 class="modal fade"
-                id="delete-card"
+                id="delete-card-{{ card.id }}"
                 data-bs-backdrop="static"
                 data-bs-keyboard="false"
                 tabindex="-1"
@@ -58,7 +58,12 @@
                         aria-label="Close"
                       ></button>
                     </div>
-                    <div class="modal-body">Delete Card?</div>
+                    <div class="modal-body">
+                      Delete Card
+                      <span style="font-weight: bold; color: red"
+                        >{{ card.alias }}</span
+                      >?
+                    </div>
                     <div class="modal-footer">
                       <button
                         type="button"

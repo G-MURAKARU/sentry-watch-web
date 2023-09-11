@@ -170,4 +170,4 @@ class PatrolPath(db.Model):
         set how a path will appear when queried and displayed on the frontend
         """
 
-        return f"from: {self.src_checkpoint.name} ; to: {self.dest_checkpoint.name} ; dur: {self.duration / 60}min"
+        return f"{self.src_checkpoint.name} ↔ {self.dest_checkpoint.name}      ⏱ {self.duration / 60}min"

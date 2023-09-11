@@ -172,48 +172,13 @@ def create_route():
             hours = int(form.shift_dur_hour.data)
             minutes = int(form.shift_dur_min.data)
 
-            # premises adjacency and duration dictionary
-            #  i.e. mapping each checkpoint and its immediate neighbours plus the duration to patrol the path in seconds
-            # checkpts = {
-            #     "A": [("B", 90), ("D", 70)],
-            #     "B": [("A", 90), ("C", 90), ("E", 70)],
-            #     "C": [("B", 90), ("F", 70)],
-            #     "D": [("E", 90), ("A", 70), ("G", 60)],
-            #     "E": [("D", 90), ("F", 90), ("B", 70), ("H", 60)],
-            #     "F": [("E", 90), ("C", 70), ("I", 60)],
-            #     "G": [("H", 90), ("D", 60)],
-            #     "H": [("G", 90), ("I", 90), ("E", 60)],
-            #     "I": [("H", 90), ("F", 60)],
-            # }
-
             # checkpts = {chkpt.id: chkpt.paths_out for chkpt in Checkpoint.query.all()}
-            path_list = []
 
-            for path_obj in form.shift_paths.data:
-                path_list.extend(
-                    (
-                        (
-                            path_obj.chkpt_src,
-                            path_obj.chkpt_dest,
-                            path_obj.duration,
-                        ),
-                        (
-                            path_obj.chkpt_dest,
-                            path_obj.chkpt_src,
-                            path_obj.duration,
-                        ),
-                    )
-                )
+            path_dict = utils.generate_adjacency_graph(path_objs=form.shift_paths.data)
 
-            path_dict = {}
-
-            for path in path_list:
-                if path[0] in path_dict:
-                    neighbours = path_dict[path[0]]
-                    neighbours.append((path[1], path[2]))
-                    path_dict[path[0]] = neighbours
-                else:
-                    path_dict[path[0]] = [(path[1], path[2])]
+            if not utils.validate_paths(path_dict=path_dict):
+                flash("Invalid: select paths that form a single, complete circuit.", "danger")
+                return redirect(url_for("create_route"))
 
             # retrieve start time, end time, path patrol frequencies and full circuit from generate_circuit output
             start, end, paths, circuit = utils.generate_circuit(

@@ -1,3 +1,7 @@
+"""
+    A set of utility functions used by the web app for certain operations
+"""
+
 import sys
 import math
 import copy
@@ -189,8 +193,7 @@ def generate_circuit(
     return shift_start, shift_end, path_freqs, ind_routes
 
 
-# TODO: create a function for validating a scan
-def update_circuit(circuits: list[dict], scan_info: list):
+def update_circuit(circuits: list[dict], scan_info: list) -> None:
     """
     updates the circuit on a valid scan by setting the checked flag for a check-in item to True
     makes the green dot appear on the frontend
@@ -214,3 +217,103 @@ def update_circuit(circuits: list[dict], scan_info: list):
                     break
         if found:
             break
+
+
+def generate_adjacency_graph(path_objs: list) -> dict:
+    """
+    generate_adjacency_graph creates a graph (dict) of each checkpoint and its immediate neighbours
+    from the queried list of PatrolPath objects that were created and saved in the database
+    """
+
+    # this list will be used to store each original path and its reverse/mirror path
+    path_list = []
+
+    # saving each original path and its reverse/mirror path to the list above
+    for path_obj in path_objs:
+        path_list.extend(
+            (
+                (
+                    path_obj.chkpt_src,
+                    path_obj.chkpt_dest,
+                    path_obj.duration,
+                ),
+                (
+                    path_obj.chkpt_dest,
+                    path_obj.chkpt_src,
+                    path_obj.duration,
+                ),
+            )
+        )
+
+    # instantiating the dict to store the adjecency graph
+    path_dict = {}
+
+    # creating the adjacency graph
+    # premises adjacency and duration dictionary
+    # i.e. mapping each checkpoint and its immediate neighbours plus the duration to patrol the path in seconds
+
+    # of the form:
+    # path_dict = {
+    #     "A": [("B", 90), ("D", 70)],
+    #     "B": [("A", 90), ("C", 90), ("E", 70)],
+    #     "C": [("B", 90), ("F", 70)],
+    #     "D": [("E", 90), ("A", 70), ("G", 60)],
+    #     "E": [("D", 90), ("F", 90), ("B", 70), ("H", 60)],
+    #     "F": [("E", 90), ("C", 70), ("I", 60)],
+    #     "G": [("H", 90), ("D", 60)],
+    #     "H": [("G", 90), ("I", 90), ("E", 60)],
+    #     "I": [("H", 90), ("F", 60)],
+    # }
+
+    for path in path_list:
+        if path[0] in path_dict:
+            neighbours = path_dict[path[0]]
+            neighbours.append((path[1], path[2]))
+            path_dict[path[0]] = neighbours
+        else:
+            path_dict[path[0]] = [(path[1], path[2])]
+
+    return path_dict
+
+
+def validate_paths(path_dict: dict[int, list[tuple]], visited: set = None) -> bool:
+    """
+    validate_paths ensures that the supervisor has selected paths that form a complete circuit
+    i.e. there are no 'sub-circuits' within the circuit. works on the principle of
+    iterative depth-first search
+    """
+
+    # declaring a set that will store the confirmed checkpoints (confirmed = part of main circuit)
+    if visited is None:
+        visited = set()
+
+    # instantiating a list that will store all the checkpoints in the created circuit
+    circuit_checkpoints = {chk: False for chk in list(path_dict.keys())}
+
+    # retrieving the first checkpoint from the circuit
+    first_checkpoint = circuit_checkpoints[0]
+
+    # instantiating the stack for DFS
+    stack: list = [first_checkpoint]
+
+    # for as long as the stack is not empty, traversal continues
+    # this ensures that all paths emanating from the given checkpoint (node) are explored
+    while stack:
+        checkpoint = stack.pop()
+
+        # if the checkpoint (node) has already been 'visited' (i.e. is part of the first/main circuit)
+        # ignore it, investigate next checkpoint
+        if checkpoint in visited:
+            continue
+
+        # if the checkpoint is being 'seen' for the first time, add to visited
+        visited.add(checkpoint)
+        # and remove it from the checkpoints list
+        circuit_checkpoints[checkpoint] = True
+
+        # add the current checkpoint's neighbouring checkpoints to the stack for DFS
+        stack.extend(neighbours[0] for neighbours in path_dict[checkpoint])
+
+    # if there is only one circuit, all values in circuit_checkpoints should be True, return True
+    # if any is False, there are at least two sub-circuits which is regarded invalid, return False
+    return False not in circuit_checkpoints.values()

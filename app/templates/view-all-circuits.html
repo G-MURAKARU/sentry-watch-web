@@ -23,8 +23,8 @@
           <td>{{ circuit.shift_end|readable_time }}</td>
           <td>
             {% for sentry in circuit.sentries %}
-            <strong>{{ sentry[0] }}</strong> (Card: {{ sentry[1].upper() }}) {%
-            endfor %}
+            <strong>{{ sentry[0] }}</strong> (Card: {{ sentry[1].upper() }})
+            <br />{% endfor %}
           </td>
           {% if completed %}
           <td>COMPLETE</td>

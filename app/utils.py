@@ -106,10 +106,16 @@ def generate_circuit(
 
         ind_routes: list[dict] = []
 
+        # deriving all circuit checkpoints
+        checkpoints_in_circuit = list(checkpoints.keys())
+
+        # TODO: for calculating weights to select a starting checkpoint
+        # starting_check_weights = [sys.maxsize for _ in checkpoints_in_circuit]
+
         # For calculating weights for randomising path to take
         check_weights = {
             checkpath: ([sys.maxsize] * len(checkpoints[checkpath]))
-            for checkpath in list(checkpoints.keys())
+            for checkpath in checkpoints_in_circuit
         }
 
         # paths list stores each generated patrol path as the full route is generated
@@ -123,7 +129,14 @@ def generate_circuit(
             current_time: int = shift_start
 
             # each route will start at a random checkpoint, and check-in info is stored in routes list
-            starting_checkpoint: int = random.choice(list(checkpoints.keys()))
+            starting_checkpoint: int = random.choice(checkpoints_in_circuit)
+
+            # TODO:
+            # starting_pick: int = random.choices(
+            #     range(len(checkpoints_in_circuit)), weights=starting_check_weights, k=1
+            # )[0]
+            # starting_check_weights[starting_pick] /= 2
+            # starting_checkpoint = checkpoints_in_circuit[starting_pick]
 
             # individual check-in info is stored at beginning of shift
             # time stored as epoch time

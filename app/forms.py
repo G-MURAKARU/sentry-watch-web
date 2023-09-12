@@ -193,7 +193,6 @@ class CircuitGenerationForm(FlaskForm):
         "Patrol Paths",
         query_factory=lambda: PatrolPath.query.all(),
         allow_blank=False,
-        description="A path and its reverse path are considered two different paths",
         validators=[InputRequired()],
     )
     submit = SubmitField("Generate Circuit")

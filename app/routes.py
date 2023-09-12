@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from contextlib import suppress
+import contextlib
 
 from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
@@ -217,12 +217,21 @@ def view_current_route():
     renders the webpage for viewing the current circuit being monitored
     """
 
+    path_freqs = [
+        ((CHK_CONNECTED[path[0][0]]["name"], CHK_CONNECTED[path[0][1]]["name"]), path[1])
+        for path in PATHS
+    ]
+    sentry_routes = [
+        [CHK_CONNECTED[route["checkpoint"]]["name"] for route in sentry["route"]]
+        for sentry in SENTRY_CIRCUIT
+    ]
+
     return render_template(
         "view-current-circuit.html",
         sentries=SENTRY_CIRCUIT,
         title="Current Route",
-        index=0,
-        paths=PATHS,
+        paths=path_freqs,
+        sentry_routes=sentry_routes,
         start=START,
         end=END,
         completed=CIRCUIT_COMPLETED,
@@ -352,7 +361,6 @@ def view_one_circuit(shift_id):
         shift_id=shift.id,
         sentries=shift.circuit,
         title="Previous Route",
-        index=0,
         paths=path_freqs,
         sentry_routes=sentry_routes,
         start=shift.shift_start,
@@ -699,7 +707,7 @@ def on_mqtt_message(client, userdata, message):
         print(message.payload)
 
         # to avoid the app crashing when trying to decode garbage payloads
-        with suppress(UnicodeDecodeError):
+        with contextlib.suppress(UnicodeDecodeError):
             payload: dict = json.loads(message.payload)
 
             # expected payload (JSON string) of the form

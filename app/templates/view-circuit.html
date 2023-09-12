@@ -37,8 +37,7 @@
   </div>
 </article>
 <h2>On-Duty Sentry Circuits</h2>
-{% for sentry in sentries %}
-{% set outer_loop = loop %}
+{% for sentry in sentries %} {% set outer_loop = loop %}
 <article class="media content-section">
   <div class="media-body">
     <div class="article-metadata">
@@ -62,7 +61,10 @@
         {% for route in sentry.route %}
         <tr>
           <th scope="row">{{ loop.index }}</th>
-          <td>({{ route.checkpoint }}) {{ sentry_routes[outer_loop.index0][loop.index0] }}</td>
+          <td>
+            ({{ route.checkpoint }}) {{
+            sentry_routes[outer_loop.index0][loop.index0] }}
+          </td>
           <td>{{ route.time|readable }}</td>
           <td>
             <svg height="20" width="20">

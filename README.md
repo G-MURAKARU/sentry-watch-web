@@ -24,7 +24,7 @@ Eclipse Mosquitto is an open source message broker which implements MQTT version
 
 ### Configuration
 To ease deployment, Docker containerisation of the mosquitto broker was preferred.  
-The (eclipse-mosquitto docker image)[https://hub.docker.com/_/eclipse-mosquitto] version 2.0.17 was used.  
+The [eclipse-mosquitto docker image](https://hub.docker.com/_/eclipse-mosquitto) version 2.0.17 was used.  
 The configuration file *"${PROJECT_DIR}/mqtt_broker/mosquitto.conf"* needs to be mounted on the container to *"/mosquitto/config/mosquitto.conf"*.  
 The password file *"${PROJECT_DIR}/mqtt_broker/data/mqtt_pass.txt"* also needs to be mounted on the container to *"/mosquitto/data/mqtt_pass.txt"*.
  This can be done by mounting "${PROJECT_DIR}/mqtt_broker/data" to "/mosquitto/data".  

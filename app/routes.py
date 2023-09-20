@@ -176,6 +176,9 @@ def create_route():
 
             path_dict = utils.generate_adjacency_graph(path_objs=form.shift_paths.data)
 
+            # TODO:
+            # circuit_count, sub_circuits = utils.validate_paths(path_dict=path_dict)
+
             if not utils.validate_paths(path_dict=path_dict):
                 flash("Invalid: select paths that form a single, complete circuit.", "danger")
                 return redirect(url_for("create_route"))
@@ -216,6 +219,16 @@ def view_current_route():
     """
     renders the webpage for viewing the current circuit being monitored
     """
+
+    if PATHS is None or SENTRY_CIRCUIT is None:
+        return render_template(
+            "view-current-circuit.html",
+            sentries=SENTRY_CIRCUIT,
+            title="Current Route",
+            start=START,
+            end=END,
+            completed=CIRCUIT_COMPLETED,
+        )
 
     path_freqs = [
         ((CHK_CONNECTED[path[0][0]]["name"], CHK_CONNECTED[path[0][1]]["name"]), path[1])

@@ -69,6 +69,9 @@ def generate_circuit(
     start_time: datetime,
     shift_dur_hour: int,
     shift_dur_min: int,
+    # TODO:
+    # sub_circuits: list[list[int]],
+    # circuit_count: int,
 ):
     """
     generates a random sentry circuit/route
@@ -118,6 +121,10 @@ def generate_circuit(
             for checkpath in checkpoints_in_circuit
         }
 
+        # TODO: if sub-circuits exist
+        # if circuit_count > 1:
+        #     cct_weights = [sys.maxsize] * circuit_count
+
         # paths list stores each generated patrol path as the full route is generated
         # will be used to count the patrol frequencies for each path
 
@@ -128,15 +135,23 @@ def generate_circuit(
             # all sentry shifts should start at the same time i.e. at the beginning of the shift
             current_time: int = shift_start
 
+            # TODO:
+            # if sub-circuits exist, use weights to pick which circuit to be assigned to
+            # if circuit_count > 1:
+            #     starting_circuit_index = random.choices(
+            #         range(len(sub_circuits)), weights=cct_weights, k=1
+            #     )[0]
+            #     starting_circuit = sub_circuits[starting_circuit_index]
+
+            #     cct_weights[starting_circuit_index] /= 4
+
+            #     # each route will start at a random checkpoint, and check-in info is stored in routes list
+            #     starting_checkpoint = random.choice(starting_circuit)
+
+            # else:
+
             # each route will start at a random checkpoint, and check-in info is stored in routes list
             starting_checkpoint: int = random.choice(checkpoints_in_circuit)
-
-            # TODO:
-            # starting_pick: int = random.choices(
-            #     range(len(checkpoints_in_circuit)), weights=starting_check_weights, k=1
-            # )[0]
-            # starting_check_weights[starting_pick] /= 2
-            # starting_checkpoint = checkpoints_in_circuit[starting_pick]
 
             # individual check-in info is stored at beginning of shift
             # time stored as epoch time
@@ -301,7 +316,33 @@ def validate_paths(path_dict: dict[int, list[tuple]], visited: set = None) -> bo
         visited = set()
 
     # instantiating a list that will store all the checkpoints in the created circuit
-    circuit_checkpoints = {chk: False for chk in list(path_dict.keys())}
+    circuit_checkpoints: dict = {chk: False for chk in list(path_dict.keys())}
+
+    # TODO:
+    # # declaring a variable to store the number of circuits present
+    # circuit_count: int = 0
+
+    # # declaring a list to store checkpoints in each sub-circuits
+    # sub_circuits: list[set] = []
+
+    # for checkpoint in path_dict:
+    #     chks: list = []
+    #     if checkpoint in visited:
+    #         continue
+    #     stack: list = [checkpoint]
+
+    #     while stack:
+    #         checkpoint = stack.pop()
+    #         if checkpoint in visited:
+    #             continue
+    #         visited.add(checkpoint)
+    #         chks.append(checkpoint)
+    #         stack.extend(neighbours[0] for neighbours in path_dict[checkpoint])
+
+    #     sub_circuits.append(chks)
+    #     circuit_count += 1
+
+    # return circuit_count, sub_circuits
 
     # retrieving the first checkpoint from the circuit
     first_checkpoint = circuit_checkpoints[0]

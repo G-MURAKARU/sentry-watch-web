@@ -2,7 +2,7 @@
 from sys import argv
 from app import app, db
 from app.models import Supervisor, Checkpoint
-from flask_bcrypt import bcrypt
+from app import bcrypt
 
 
 class Manager:

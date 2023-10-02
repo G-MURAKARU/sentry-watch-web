@@ -345,7 +345,7 @@ def validate_paths(path_dict: dict[int, list[tuple]], visited: set = None) -> bo
     # return circuit_count, sub_circuits
 
     # retrieving the first checkpoint from the circuit
-    first_checkpoint = circuit_checkpoints[0]
+    first_checkpoint = list(circuit_checkpoints.keys())[0]
 
     # instantiating the stack for DFS
     stack: list = [first_checkpoint]

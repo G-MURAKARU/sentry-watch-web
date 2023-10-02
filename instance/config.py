@@ -18,7 +18,7 @@ SQLALCHEMY_DATABASE_URI = "sqlite:///platform.db"
 
 # More MQTT details for Flask-MQTT
 MQTT_CLIENT_ID = "sentry-platform"
-MQTT_KEEPALIVE = 3600
+MQTT_KEEPALIVE = 300
 MQTT_LAST_WILL_TOPIC = "sentry-platform/backend-server/shift-status"
 MQTT_LAST_WILL_MESSAGE = "OFF"
 MQTT_LAST_WILL_QOS = 2

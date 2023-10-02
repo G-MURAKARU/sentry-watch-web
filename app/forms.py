@@ -1,4 +1,5 @@
 from datetime import datetime
+import phonenumbers
 
 from flask import request
 from flask_wtf import FlaskForm
@@ -18,6 +19,20 @@ from wtforms_sqlalchemy.fields import QuerySelectField, QuerySelectMultipleField
 from app.models import Card, Sentry, Shift, PatrolPath, Checkpoint
 
 
+def validate_phone_number(form, phone_no: str) -> None:
+    """
+    validates an input phone number using the phonenumbers python library
+    """
+
+    try:
+        input_number = phonenumbers.parse(phone_no.data)
+    except phonenumbers.NumberParseException as error:
+        raise ValidationError("Input valid phone number.") from error
+    else:
+        if not phonenumbers.is_valid_number(input_number):
+            raise ValidationError("Input valid phone number.")
+
+
 class SentryRegistrationForm(FlaskForm):
     """
     Registration form for sentries
@@ -35,7 +50,7 @@ class SentryRegistrationForm(FlaskForm):
         "Phone Number",
         validators=[
             InputRequired(),
-            Length(min=13, max=13, message="Input valid phone number"),
+            validate_phone_number,
         ],
         description="format: e.g. +254...",
     )
@@ -71,7 +86,8 @@ class UpdateSentryForm(FlaskForm):
 
     def validate_national_id(self, national_id):
         sentry = Sentry.query.filter_by(national_id=national_id.data).first()
-        if sentry and sentry.id != request.args.get("id"):
+        query_id = int(request.url.split("/")[5])
+        if sentry and sentry.id != query_id:
             raise ValidationError(f"Sentry with ID: {national_id.data} already registered.")
 
 
@@ -90,7 +106,7 @@ class CardRegistrationForm(FlaskForm):
     alias = StringField("Card Alias/Name", validators=[InputRequired()])
     submit = SubmitField("Register")
 
-    def validate_card_id(self, rfid_id):
+    def validate_rfid_id(self, rfid_id):
         if Card.query.filter_by(rfid_id=rfid_id.data).first():
             raise ValidationError(f"Card with ID: {rfid_id.data} already registered.")
 
@@ -116,12 +132,14 @@ class UpdateCardForm(FlaskForm):
 
     def validate_card_id(self, rfid_id):
         card = Card.query.filter_by(rfid_id=rfid_id.data).first()
-        if card and card.id != request.args.get("id"):
+        query_id = int(request.url.split("/")[5])
+        if card and card.id != query_id:
             raise ValidationError(f"Card with ID: {rfid_id.data} already registered.")
 
     def validate_alias(self, alias):
         card = Card.query.filter_by(alias=alias.data).first()
-        if card and card.id != request.args.get("id"):
+        query_id = int(request.url.split("/")[5])
+        if card and card.id != query_id:
             raise ValidationError(f"Card with alias: {alias.data} already registered.")
 
 
@@ -234,6 +252,14 @@ class CheckpointRegistrationForm(FlaskForm):
     chk_id = IntegerField("Checkpoint ID", validators=[InputRequired()])
     chk_name = StringField("Checkpoint Name", validators=[InputRequired()])
     submit = SubmitField("Register")
+
+    def validate_chk_id(self, chk_id):
+        if Checkpoint.query.filter_by(id=chk_id.data).first():
+            raise ValidationError(f"Checkpoint with ID: {chk_id.data} already registered.")
+
+    def validate_chk_name(self, chk_name):
+        if Checkpoint.query.filter_by(name=chk_name.data).first():
+            raise ValidationError(f"Checkpoint with name: {chk_name.data} already registered.")
 
 
 class PathCreationForm(FlaskForm):

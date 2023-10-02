@@ -111,6 +111,7 @@ def validate_scan(check_in: dict):
     """
     checks and validates a scan at a checkpoint
     """
+
     chk, id, time = list(check_in.values())
     # check if the card should be on duty
     if id not in CARDS:

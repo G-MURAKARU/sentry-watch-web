@@ -17,7 +17,7 @@
       <tbody class="table-group-divider">
         {% for circuit in circuits %}
         <tr>
-          <th scope="row">{{ circuit.id }}</th>
+          <th scope="row">{{ loop.index }}</th>
           <td>{{ circuit.shift_start|readable_day }}</td>
           <td>{{ circuit.shift_start|readable_time }}</td>
           <td>{{ circuit.shift_end|readable_time }}</td>
